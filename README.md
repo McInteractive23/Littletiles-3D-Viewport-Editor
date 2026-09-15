@@ -5,7 +5,7 @@ live in 3D, and export the edited selection back to SNBT.
 
 Everything runs client-side — no build step, no server, no dependencies beyond Three.js loaded from a CDN.
 
-**[Open the tool](https://mcinteractive23.github.io/Littletiles-3D-Viewport-Editor/)** · **[Read the guide](https://YOUR-USERNAME.github.io/YOUR-REPO/wiki.html)**
+**[Open the tool](https://mcinteractive23.github.io/Littletiles-3D-Viewport-Editor/)** · **[Read the guide](https://mcinteractive23.github.io/Littletiles-3D-Viewport-Editor/wiki.html)**
 
 *(replace `YOUR-USERNAME`/`YOUR-REPO` above once this is pushed — see setup below)*
 
