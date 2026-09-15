@@ -1,0 +1,1299 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>LittleTiles Selection Converter</title>
+  <style>
+    :root{
+      --bg:#0f1220; --panel:#171a2b; --muted:#9aa3b2; --text:#e9edf7;
+      --active:#2b3050; --scroll-thumb:#2a3156; --scroll-track:#0f1220;
+      --border:#242a48; --field-bg:#0e1120; --field-border:#2a3156;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;font:14px/1.45 system-ui,-apple-system,'Segoe UI',Roboto,Arial;background:var(--bg);color:var(--text)}
+    header{padding:18px;border-bottom:1px solid rgba(36,42,72,.6);background:linear-gradient(180deg,rgba(15,18,32,.98),rgba(15,18,32,.9));position:sticky;top:0}
+    h1{margin:0;font-size:18px}
+    main{padding:18px;display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap}
+    .col{display:flex;flex-direction:column;gap:14px;min-width:320px}
+    .col-left{flex:1.2 1 480px}
+    .col-right{flex:.8 1 380px}
+    @media (max-width:1100px){
+      .col{flex:1 1 100%}
+      .preview-canvas{height:340px}
+    }
+    section{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:14px}
+    h2{margin:0 0 8px;font-size:15px}
+    label{color:var(--muted);font-size:12px;display:block;margin-bottom:6px}
+    input,textarea,select{width:100%;background:var(--field-bg);color:var(--text);border:1px solid var(--field-border);border-radius:8px;padding:8px}
+    textarea{resize:vertical;max-width:100%}
+    textarea{min-height:64px;font-family:ui-monospace,Menlo,monospace;font-size:13px}
+    .btn{display:inline-block;background:var(--field-bg);color:var(--text);border:1px solid var(--field-border);padding:8px 12px;border-radius:8px;cursor:pointer}
+    .btn:hover{border-color:#3c4670}
+    .grid{display:grid;gap:8px}
+    .cols-3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+    .corners{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+    .corner,.facebox,.boxpanel{padding:8px;border-radius:8px;border:1px solid var(--field-border);background:#0f1325}
+    .corner h3,.facebox h3,.boxpanel h3{margin:0 0 6px;font-size:13px;color:#c9d1ff}
+    .muted{color:var(--muted);font-size:12px}
+    .status{margin-top:8px;font-size:13px;color:var(--muted)}
+    .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+    .row-inline{display:flex;gap:8px;align-items:center}
+    .faces-container{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+    .faces-container input[type="checkbox"]{transform:scale(1.6);margin-right:6px}
+    .collapsible-header{cursor:pointer;padding:8px;background:#1a1e33;border-radius:6px;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center}
+    .collapsible-header span{font-weight:bold}
+    .collapsible-header.active{background:var(--active);border:1px solid #3a4070}
+    .collapsible-content{display:none;margin-bottom:10px}
+    .collapsible-content.open{display:block}
+    .small-muted{color:var(--muted);font-size:12px}
+    #groupsContainer .group{margin-bottom:8px;padding:8px;border-radius:8px;background:#0e1324;border:1px solid var(--field-border);display:flex;gap:8px;align-items:center}
+    #groupsContainer label{font-size:13px;color:#cfe0ff;display:block}
+    .group-controls{margin-top:8px;display:flex;gap:8px;align-items:center}
+    .group-controls input[type="text"]{flex:1}
+    .boxpanel.selected .collapsible-header{background:linear-gradient(180deg,rgba(43,48,80,0.95),rgba(43,48,80,0.9));border:1px solid #4b5b9a}
+    .boxpanel.selected .collapsible-header span:first-child{color:#e6f0ff}
+    #groupsContainer{max-height:none;overflow:visible;padding-right:0}
+    #boxesContainer{max-height:500px;overflow-y:auto;padding-right:4px}
+    .preview-canvas{width:100%;height:560px;border-radius:10px;border:1px solid var(--border);background:#0b0e1a;overflow:hidden;cursor:grab}
+    .preview-canvas:active{cursor:grabbing}
+    .preview-canvas canvas{display:block}
+    .view-mode-btn{padding:6px 10px;font-size:12px}
+    .view-mode-btn.active{background:var(--active);border-color:#3a4070;color:#e6f0ff}
+    ::-webkit-scrollbar{width:10px;height:10px}
+    ::-webkit-scrollbar-track{background:var(--scroll-track);border-radius:5px}
+    ::-webkit-scrollbar-thumb{background:var(--scroll-thumb);border-radius:5px;border:2px solid var(--scroll-track)}
+    ::-webkit-scrollbar-thumb:hover{background:#3c4670}
+    *{scrollbar-width:thin;scrollbar-color:var(--scroll-thumb) var(--scroll-track)}
+  </style>
+</head>
+<body>
+<header>
+  <div class="row" style="justify-content:space-between;align-items:flex-start">
+    <div>
+      <h1>LittleTiles Selection Converter</h1>
+      <div class="muted">Import SNBT/selection, edit multiple boxes, group tiles by block ID or color, edit global flips &amp; corner offsets, preview the result in 3D, then export updated SNBT.</div>
+    </div>
+    <a href="wiki.html" class="btn" style="text-decoration:none;white-space:nowrap">📖 Guide</a>
+  </div>
+</header>
+
+<main>
+  <div class="col col-left">
+  <section>
+    <div class="row" style="justify-content:space-between;margin-bottom:8px">
+      <h2 style="margin:0">3D Preview</h2>
+      <div class="row" style="gap:10px">
+        <div class="row-inline" style="gap:4px">
+          <button class="btn view-mode-btn active" data-mode="solid">Solid</button>
+          <button class="btn view-mode-btn" data-mode="solidwire">Solid+Wire</button>
+          <button class="btn view-mode-btn" data-mode="wire">Wireframe</button>
+        </div>
+        <button class="btn" id="previewFitBtn">Reset View</button>
+      </div>
+    </div>
+    <div id="previewCanvas" class="preview-canvas"></div>
+    <div class="muted" style="margin-top:8px">
+      Drag to orbit, scroll to zoom, middle-click drag to pan. Each box is colored using its own color/alpha, and corner offsets bend
+      the box the same way LittleTiles' transformable corners do. Flipping a face reverses its stored triangle
+      winding (so the exported data is correct) but every face still renders solid here — nothing goes
+      invisible in the preview. The floor grid is spaced to the selected Grid value, so each square is one
+      in-game block.
+    </div>
+  </section>
+
+  <section>
+    <h2>Final SNBT Output</h2>
+    <label for="snbtOut"></label><textarea id="snbtOut" readonly style="min-height:120px"></textarea>
+    <div class="row" style="margin-top:8px">
+      <button class="btn" id="downloadBtn">Download SNBT</button>
+      <button class="btn" id="copyBtn">Copy SNBT</button>
+    </div>
+  </section>
+
+  <section>
+    <h2>Result (after import)</h2>
+    <div class="grid">
+      <div><label>Indicator (signed)</label><label for="indicatorOut"></label><input id="indicatorOut" readonly></div>
+      <div><label>Indicator bits (binary)</label><label for="bitListOut"></label><input id="bitListOut" readonly></div>
+      <div><label>Shorts (scan order)</label><label for="shortsOut"></label><textarea id="shortsOut" readonly></textarea></div>
+      <div><label>Packed ints</label><label for="packedOut"></label><textarea id="packedOut" readonly></textarea></div>
+      <div><label>Current box array (min, max, indicator, packed…)</label><label for="fullArrayOut"></label><textarea id="fullArrayOut" readonly></textarea></div>
+    </div>
+  </section>
+  </div>
+
+  <div class="col col-right">
+  <section>
+    <h2>Controls</h2>
+    <div class="small-muted">Grid (units per block edge)</div>
+    <div style="margin-bottom:10px">
+      <label for="gridInput"></label>
+      <select id="gridInput">
+        <option value="2">2</option>
+        <option value="4">4</option>
+        <option value="8">8</option>
+        <option value="16" selected>16</option>
+        <option value="32">32</option>
+        <option value="64">64</option>
+        <option value="128">128</option>
+        <option value="256">256</option>
+        <option value="512">512</option>
+        <option value="1024">1024</option>
+        <option value="custom">Custom…</option>
+      </select>
+      <input type="number" id="gridCustomInput" min="1" step="1" placeholder="Grid value" style="display:none;margin-top:6px">
+    </div>
+
+    <div class="small-muted">Flipped Faces (global)</div>
+    <div class="faces-container" style="margin-bottom:10px">
+      <div class="facebox"><h3>East</h3><label><input type="checkbox" id="flipEast"></label></div>
+      <div class="facebox"><h3>West</h3><label><input type="checkbox" id="flipWest"></label></div>
+      <div class="facebox"><h3>South</h3><label><input type="checkbox" id="flipSouth"></label></div>
+      <div class="facebox"><h3>North</h3><label><input type="checkbox" id="flipNorth"></label></div>
+      <div class="facebox"><h3>Up</h3><label><input type="checkbox" id="flipUp"></label></div>
+      <div class="facebox"><h3>Down</h3><label><input type="checkbox" id="flipDown"></label></div>
+    </div>
+
+    <h3 class="small-muted">Corner Offsets (global)</h3>
+    <div class="corners" id="corners" style="margin-bottom:8px"></div>
+
+    <h3 class="small-muted">Import Selection</h3>
+    <label for="importBox"></label><textarea id="importBox" placeholder="Paste SNBT here..."></textarea>
+    <div class="row-inline" style="margin-top:8px">
+      <button class="btn" id="importBtn">Import</button>
+      <input type="file" id="fileInput" accept=".txt,.json">
+      <button class="btn" id="clearBtn">Clear All</button>
+    </div>
+    <div class="status" id="status">Status: waiting for import</div>
+  </section>
+
+  <section>
+    <h2>Groups</h2>
+    <div id="groupsContainer" class="grid">
+      <div style="margin-bottom:8px"><strong class="small-muted">By texture</strong></div>
+      <div id="groupsByTexture"></div>
+      <div style="margin-top:10px;margin-bottom:8px"><strong class="small-muted">By color</strong></div>
+      <div id="groupsByColor"></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Boxes</h2>
+    <div class="row" style="margin-bottom:8px">
+      <button class="btn" id="addBoxBtn">Add Box</button>
+      <button class="btn" id="openAllBtn">Open All</button>
+      <button class="btn" id="closeAllBtn">Close All</button>
+    </div>
+    <div id="boxesContainer" class="grid"></div>
+  </section>
+  </div>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script>
+/*
+ * LittleTiles Selection Converter
+ * ---------------------------------------------------------------------------
+ * LittleTiles (a Minecraft building mod) lets a player fill one block's space
+ * with many small "tile" boxes, each with its own position, size, block/
+ * texture ID, and optional color tint + per-face flips + per-corner offsets
+ * (the last of which lets a box's corners move independently, turning a
+ * plain cuboid into a wedge, slope, or other warped shape). When a selection
+ * of tiles is copied in-game, LittleTiles serializes it as SNBT (Minecraft's
+ * string form of NBT data) — a single string containing every box's numbers
+ * packed into "[I; ...]" integer arrays.
+ *
+ * This page is a small workbench for that SNBT: paste a selection in, edit
+ * boxes individually or as a group (by texture or by color), tweak global
+ * corner/flip values, watch a live 3D preview of the result, and export the
+ * edited selection back to SNBT to paste into the game.
+ *
+ * The one part of this file that has to be bit-exact is the corner/flip
+ * "indicator" encoding, so those functions are heavily commented but kept
+ * logically identical to the original — everything else has been reformatted
+ * and cleaned up for readability.
+ */
+
+const $  = s => document.querySelector(s);
+const $$ = s => Array.from(document.querySelectorAll(s));
+
+let boxNodes = [];        // DOM node per box (state lives as properties on the node — see createBox)
+let activeBoxIndex = -1;  // index into boxNodes of whichever box the global Controls panel is editing
+
+// ---- Low-level integer helpers -------------------------------------------
+// LittleTiles packs everything into Java ints, which are signed 32-bit, so
+// we constantly convert between "the value a human types" (signed) and "the
+// bits Minecraft actually stores" (unsigned, then reinterpreted as signed).
+
+function toSigned16(n)      { return (n & 0x8000) ? n - 0x10000 : n; }
+function fromSigned16(n)    { return n & 0xFFFF; }
+function toSigned32(u)      { u = u >>> 0; return (u & 0x80000000) ? u - 0x100000000 : u; }
+function unsignedToBinary32(u){ return (u >>> 0).toString(2).padStart(32, '0'); }
+function popcount(u)        { u = u >>> 0; let c = 0; while (u) { u &= u - 1; c++; } return c; }
+
+// Which bit of the 32-bit "indicator" each global face-flip checkbox controls.
+const faceMap = [
+  { id: 'flipEast',  bit: 29 },
+  { id: 'flipWest',  bit: 28 },
+  { id: 'flipSouth', bit: 27 },
+  { id: 'flipNorth', bit: 26 },
+  { id: 'flipUp',    bit: 25 },
+  { id: 'flipDown',  bit: 24 },
+];
+// Bit 31 just marks "this box has transform data at all" (as opposed to a plain box).
+const TOP_MARKER = 0x80000000 >>> 0;
+
+function rgbaFromPacked(p) {
+  p = (p || 0) >>> 0;
+  const a = (p >>> 24) & 0xFF, r = (p >>> 16) & 0xFF, g = (p >>> 8) & 0xFF, b = p & 0xFF;
+  return `rgba(${r},${g},${b},${a / 255})`;
+}
+
+/**
+ * Reads the 8 global corner-offset inputs and the 6 global flip checkboxes
+ * and packs them into the shape LittleTiles expects:
+ *  - indicator: one 32-bit int. Bits 0-23 mark which of the 8 corners*3 axes
+ *    are non-zero (corner i, axis a -> bit i*3+a). Bits 24-29 are the face
+ *    flips. Bit 31 marks "there is transform data".
+ *  - shorts: the actual non-zero corner offset values, in bit order.
+ *  - packed: those shorts, squeezed two-per-int (hi 16 bits / lo 16 bits)
+ *    because that's how LittleTiles stores them in the SNBT int array.
+ */
+function buildIndicatorAndPacked() {
+  const corners = Array.from({ length: 8 }, () => [0, 0, 0]);
+  $$('input[data-corner]').forEach(inp => {
+    corners[Number(inp.dataset.corner)][Number(inp.dataset.axis)] = +inp.value || 0;
+  });
+
+  let indicator = 0 >>> 0;
+  const shorts = [];
+  for (let i = 0; i < 8; i++) {
+    for (let a = 0; a < 3; a++) {
+      const v = corners[i][a];
+      if (v !== 0) {
+        indicator = (indicator | (1 << (i * 3 + a))) >>> 0;
+        shorts.push(v);
+      }
+    }
+  }
+  faceMap.forEach(f => {
+    const el = $('#' + f.id);
+    if (el && el.checked) indicator = (indicator | ((1 << f.bit) >>> 0)) >>> 0;
+  });
+
+  const anyFlip = faceMap.some(f => { const el = $('#' + f.id); return el && el.checked; });
+  const any = shorts.length > 0 || anyFlip;
+  if (any) indicator = (indicator | TOP_MARKER) >>> 0;
+
+  const packed = [];
+  for (let i = 0; i < shorts.length; i += 2) {
+    const hi = fromSigned16(shorts[i]);
+    const lo = (i + 1 < shorts.length) ? fromSigned16(shorts[i + 1]) : 0;
+    packed.push(toSigned32(((hi << 16) | lo) >>> 0));
+  }
+
+  return { any, indicatorSigned: toSigned32(indicator), indicatorUnsigned: indicator, shorts, packed };
+}
+
+function updatePackedColor(wrapper) {
+  const hex = (wrapper._colorHex || '#ffffff').replace('#', '');
+  const rgb = parseInt(hex, 16) || 0;
+  const alpha = wrapper._alpha === undefined ? 255 : (wrapper._alpha & 0xFF);
+  const packed = (((alpha & 0xFF) << 24) | rgb) >>> 0;
+  wrapper._colorPacked = packed;
+  wrapper.dataset.color = packed;
+  const cb = wrapper.querySelector('.color-box');
+  if (cb) cb.style.background = rgbaFromPacked(packed);
+}
+
+function applyControlsToActiveBox() {
+  const node = boxNodes[activeBoxIndex];
+  if (!node) return;
+  const ip = buildIndicatorAndPacked();
+  if (!ip.any) {
+    delete node._importIndicator; delete node._importUnsigned;
+    delete node._importPacked; delete node._importShorts;
+    delete node._corners; delete node._flips;
+  } else {
+    node._importIndicator = ip.indicatorSigned;
+    node._importUnsigned  = ip.indicatorUnsigned;
+    node._importShorts    = ip.shorts.slice();
+    node._importPacked    = ip.packed.slice();
+
+    const corners = Array.from({ length: 8 }, () => [0, 0, 0]);
+    $$('input[data-corner]').forEach(inp => {
+      corners[Number(inp.dataset.corner)][Number(inp.dataset.axis)] = +inp.value || 0;
+    });
+    node._corners = corners;
+
+    const flips = {};
+    faceMap.forEach(f => { flips[f.id] = !!($('#' + f.id) && $('#' + f.id).checked); });
+    node._flips = flips;
+  }
+  render();
+  rebuildGroups();
+}
+
+// ---- Box panel (one collapsible card per tile box) -----------------------
+
+function createBox(index, data) {
+  const wrapper = document.createElement('div');
+  wrapper.className = 'boxpanel';
+  wrapper.dataset.idx = index;
+  wrapper.dataset.blockId = data && data.blockId ? data.blockId : '';
+
+  const minX = data && data.minX !== undefined ? data.minX : (data && data.min && data.min[0] !== undefined ? data.min[0] : 0);
+  const minY = data && data.minY !== undefined ? data.minY : (data && data.min && data.min[1] !== undefined ? data.min[1] : 0);
+  const minZ = data && data.minZ !== undefined ? data.minZ : (data && data.min && data.min[2] !== undefined ? data.min[2] : 0);
+  const sizeX = (data && data.maxX !== undefined && data.minX !== undefined) ? (data.maxX - data.minX) : (data && data.sizeX !== undefined ? data.sizeX : (data && data.size && data.size[0] !== undefined ? data.size[0] : 0));
+  const sizeY = (data && data.maxY !== undefined && data.minY !== undefined) ? (data.maxY - data.minY) : (data && data.sizeY !== undefined ? data.sizeY : (data && data.size && data.size[1] !== undefined ? data.size[1] : 0));
+  const sizeZ = (data && data.maxZ !== undefined && data.minZ !== undefined) ? (data.maxZ - data.minZ) : (data && data.sizeZ !== undefined ? data.sizeZ : (data && data.size && data.size[2] !== undefined ? data.size[2] : 0));
+
+  const header = document.createElement('div');
+  header.className = 'collapsible-header';
+  header.innerHTML = `<div>Box ${index + 1}</div><div>[+]</div>`;
+  wrapper.appendChild(header);
+
+  const content = document.createElement('div');
+  content.className = 'collapsible-content';
+  content.innerHTML = `
+    <div class="cols-3">
+      <div><label>minX</label><input type="number" class="minX" value="${minX}"></div>
+      <div><label>minY</label><input type="number" class="minY" value="${minY}"></div>
+      <div><label>minZ</label><input type="number" class="minZ" value="${minZ}"></div>
+      <div><label>sizeX</label><input type="number" class="sizeX" value="${sizeX}"></div>
+      <div><label>sizeY</label><input type="number" class="sizeY" value="${sizeY}"></div>
+      <div><label>sizeZ</label><input type="number" class="sizeZ" value="${sizeZ}"></div>
+    </div>
+    <div style="margin-top:8px">
+      <label>Block ID (with state)</label>
+      <input type="text" class="blockId" value="${data && data.blockId ? data.blockId : ''}">
+    </div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px">
+      <div style="flex:0 0 auto">
+        <button class="btn remove">Remove</button>
+      </div>
+      <div style="display:flex;align-items:flex-end;gap:8px">
+        <div style="display:flex;flex-direction:column;align-items:center">
+          <label style="font-size:12px;margin-bottom:4px">Color</label>
+          <input type="color" class="colorPicker" value="${data && data._colorHex ? data._colorHex : '#ffffff'}" style="width:32px;height:32px;padding:0;border-radius:6px;border:1px solid var(--field-border)">
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:center">
+          <label style="font-size:12px;margin-bottom:4px">Alpha</label>
+          <input type="number" class="alphaInput" min="0" max="255" value="${data && data._alpha !== undefined ? data._alpha : 255}" style="width:72px;padding:6px;border-radius:6px">
+        </div>
+        <div style="width:34px;height:34px;display:flex;align-items:center;justify-content:center">
+          <div class="color-box" aria-hidden="true" style="width:28px;height:28px;border-radius:6px;border:1px solid #333"></div>
+        </div>
+      </div>
+    </div>
+  `;
+  wrapper.appendChild(content);
+
+  wrapper._colorHex = data && data._colorHex ? data._colorHex : '#ffffff';
+  wrapper._alpha = data && data._alpha !== undefined ? data._alpha : 255;
+  if (data && data._colorPacked !== undefined) wrapper._colorPacked = data._colorPacked >>> 0;
+  else updatePackedColor(wrapper);
+
+  if (data && data._indicatorSigned !== undefined) {
+    wrapper._importIndicator = data._indicatorSigned;
+    wrapper._importPacked = data._packed || [];
+    wrapper._importShorts = data._shorts || [];
+    wrapper._importUnsigned = data._indicatorUnsigned;
+    wrapper._corners = data._corners || Array.from({ length: 8 }, () => [0, 0, 0]);
+    wrapper._flips = data._flips || {};
+  } else {
+    wrapper._corners = data && data._corners ? data._corners : Array.from({ length: 8 }, () => [0, 0, 0]);
+    wrapper._flips = data && data._flips ? data._flips : {};
+  }
+
+  header.addEventListener('click', () => {
+    const open = content.classList.contains('open');
+    if (open) {
+      content.classList.remove('open');
+      header.classList.remove('active');
+      header.querySelector('div:last-child').textContent = '[+]';
+    } else {
+      openBox(wrapper);
+    }
+  });
+
+  content.querySelectorAll('input').forEach(inp => {
+    inp.addEventListener('focus', () => openBox(wrapper));
+    inp.addEventListener('input', () => {
+      if (inp.classList.contains('colorPicker')) {
+        wrapper._colorHex = inp.value;
+        updatePackedColor(wrapper);
+        const cb = wrapper.querySelector('.color-box');
+        if (cb) cb.style.background = rgbaFromPacked(wrapper._colorPacked);
+        try { rebuildGroups(); } catch (e) { /* ignore */ }
+      } else if (inp.classList.contains('alphaInput')) {
+        wrapper._alpha = Math.max(0, Math.min(255, +inp.value || 0));
+        inp.value = wrapper._alpha;
+        updatePackedColor(wrapper);
+        const cb2 = wrapper.querySelector('.color-box');
+        if (cb2) cb2.style.background = rgbaFromPacked(wrapper._colorPacked);
+        try { rebuildGroups(); } catch (e) { /* ignore */ }
+      } else if (inp.classList.contains('blockId')) {
+        wrapper.dataset.blockId = inp.value.trim();
+        rebuildGroups();
+      }
+      render();
+    });
+  });
+
+  content.querySelector('.remove').addEventListener('click', () => {
+    const idx = Number(wrapper.dataset.idx);
+    wrapper.remove();
+    boxNodes.splice(idx, 1);
+    boxNodes.forEach((n, i) => {
+      n.dataset.idx = i;
+      n.querySelector('.collapsible-header div:first-child').textContent = 'Box ' + (i + 1);
+    });
+    activeBoxIndex = Math.max(-1, Math.min(activeBoxIndex, boxNodes.length - 1));
+    if (boxNodes[activeBoxIndex]) openBox(boxNodes[activeBoxIndex]);
+    rebuildGroups();
+    render();
+  });
+
+  const cb = content.querySelector('.color-box');
+  if (cb) cb.style.background = rgbaFromPacked(wrapper._colorPacked);
+  return wrapper;
+}
+
+function openBox(wrapper) {
+  $$('#boxesContainer .collapsible-content').forEach(c => c.classList.remove('open'));
+  $$('#boxesContainer .collapsible-header').forEach(h => h.classList.remove('active'));
+  $$('#boxesContainer .boxpanel').forEach(p => p.classList.remove('selected'));
+
+  const content = wrapper.querySelector('.collapsible-content');
+  content.classList.add('open');
+  wrapper.querySelector('.collapsible-header').classList.add('active');
+  wrapper.querySelector('.collapsible-header div:last-child').textContent = '[-]';
+  wrapper.classList.add('selected');
+  activeBoxIndex = Number(wrapper.dataset.idx);
+
+  const b = wrapper;
+  faceMap.forEach(f => { const el = $('#' + f.id); if (el) el.checked = !!(b._flips && b._flips[f.id]); });
+  (b._corners || []).forEach((c, i) => {
+    const ins = $('#corners').querySelectorAll('input[data-corner="' + i + '"]');
+    if (ins[0]) ins[0].value = c[0];
+    if (ins[1]) ins[1].value = c[1];
+    if (ins[2]) ins[2].value = c[2];
+  });
+
+  const minX = +wrapper.querySelector('.minX').value, minY = +wrapper.querySelector('.minY').value, minZ = +wrapper.querySelector('.minZ').value;
+  const sX = +wrapper.querySelector('.sizeX').value || 0, sY = +wrapper.querySelector('.sizeY').value || 0, sZ = +wrapper.querySelector('.sizeZ').value || 0;
+  const maxX = minX + sX, maxY = minY + sY, maxZ = minZ + sZ;
+
+  if (b._importIndicator !== undefined) {
+    $('#indicatorOut').value = b._importIndicator;
+    $('#bitListOut').value = unsignedToBinary32(b._importUnsigned || (b._importIndicator >>> 0));
+    $('#shortsOut').value = (b._importShorts || []).join(', ');
+    $('#packedOut').value = (b._importPacked || []).join('\n');
+    $('#fullArrayOut').value = JSON.stringify([minX, minY, minZ, maxX, maxY, maxZ, b._importIndicator].concat(b._importPacked || []));
+  } else {
+    $('#indicatorOut').value = ''; $('#bitListOut').value = ''; $('#shortsOut').value = ''; $('#packedOut').value = '';
+    $('#fullArrayOut').value = JSON.stringify([minX, minY, minZ, maxX, maxY, maxZ]);
+  }
+}
+
+function addBox(data) {
+  const idx = boxNodes.length;
+  const node = createBox(idx, data || {});
+  node.dataset.idx = idx;
+  boxNodes.push(node);
+  $('#boxesContainer').appendChild(node);
+  openBox(node);
+  rebuildGroups();
+  setTimeout(() => render(), 0);
+}
+
+function readBoxData(node) {
+  if (!node) return { minX: 0, minY: 0, minZ: 0, maxX: 0, maxY: 0, maxZ: 0, blockId: '' };
+  const minX = +node.querySelector('.minX')?.value || 0;
+  const minY = +node.querySelector('.minY')?.value || 0;
+  const minZ = +node.querySelector('.minZ')?.value || 0;
+  const sizeX = +node.querySelector('.sizeX')?.value || 0;
+  const sizeY = +node.querySelector('.sizeY')?.value || 0;
+  const sizeZ = +node.querySelector('.sizeZ')?.value || 0;
+  const bidEl = node.querySelector('.blockId');
+  const blockId = bidEl ? bidEl.value.trim() : (node.dataset.blockId || '');
+  return { minX, minY, minZ, maxX: minX + sizeX, maxY: minY + sizeY, maxZ: minZ + sizeZ, blockId };
+}
+
+/**
+ * Rebuilds the exported SNBT string from the current box list. Boxes are
+ * grouped by block ID (LittleTiles stores one array per texture, "t:{...}"),
+ * and consecutive same-color boxes within a group share one color header
+ * instead of repeating it — mirrors how the game itself compresses color runs.
+ */
+function buildSNBT() {
+  if (boxNodes.length === 0) return '';
+  const grid = getGridValue();
+  const indPackGlobal = buildIndicatorAndPacked();
+
+  let minX = Infinity, minY = Infinity, minZ = Infinity;
+  let maxSizeX = 0, maxSizeY = 0, maxSizeZ = 0;
+  for (const node of boxNodes) {
+    const b = readBoxData(node);
+    minX = Math.min(minX, b.minX); minY = Math.min(minY, b.minY); minZ = Math.min(minZ, b.minZ);
+    maxSizeX = Math.max(maxSizeX, b.maxX - b.minX);
+    maxSizeY = Math.max(maxSizeY, b.maxY - b.minY);
+    maxSizeZ = Math.max(maxSizeZ, b.maxZ - b.minZ);
+  }
+  const sizeX = maxSizeX, sizeY = maxSizeY, sizeZ = maxSizeZ;
+
+  const perBlock = new Map();
+  let anyAlpha = false;
+  for (let i = 0; i < boxNodes.length; i++) {
+    const node = boxNodes[i];
+    const b = readBoxData(node);
+    // Per-box arrays store absolute max coordinates, not a size delta —
+    // mirrors the read path in importSelection().
+    const parts = [b.minX, b.minY, b.minZ, b.maxX, b.maxY, b.maxZ];
+
+    const cp = (node._colorPacked !== undefined) ? (node._colorPacked >>> 0) : (Number(node.dataset.color || 0) >>> 0);
+    const hasColor = !!(node._colorPacked !== undefined || node.dataset.color);
+    if (hasColor) { const alpha = (cp >>> 24) & 0xFF; if (alpha !== 255) anyAlpha = true; }
+
+    if (node._importIndicator !== undefined) {
+      parts.push(node._importIndicator);
+      if (node._importPacked && node._importPacked.length) for (const w of node._importPacked) parts.push(w);
+    } else if (indPackGlobal.any) {
+      parts.push(indPackGlobal.indicatorSigned);
+      if (indPackGlobal.packed && indPackGlobal.packed.length) for (const w of indPackGlobal.packed) parts.push(w);
+    }
+
+    const partsStr = `[I;${parts.join(',')}]`;
+    const colorKey = hasColor ? String(cp) : '';
+    const colorHeader = hasColor ? `[I;${toSigned32(cp)}]` : null;
+
+    const key = b.blockId || '';
+    if (!perBlock.has(key)) perBlock.set(key, []);
+    perBlock.get(key).push({ colorKey, colorHeader, partsStr });
+  }
+
+  const tParts = [];
+  for (const [blockId, items] of perBlock.entries()) {
+    const outArr = [];
+    let lastColor = null;
+    for (const it of items) {
+      if (it.colorKey) {
+        if (it.colorKey !== lastColor) { outArr.push(it.colorHeader); lastColor = it.colorKey; }
+      } else {
+        lastColor = null;
+      }
+      outArr.push(it.partsStr);
+    }
+    const keyEscaped = blockId.replace(/"/g, '\"');
+    tParts.push(`"${keyEscaped}":[${outArr.join(',')}]`);
+  }
+
+  const tStr = tParts.join(',');
+  const tiles = perBlock.size;
+  const base = `{boxes:${boxNodes.length},grid:${grid},min:[I;${minX},${minY},${minZ}],size:[I;${sizeX},${sizeY},${sizeZ}],t:{${tStr}},tiles:${tiles}`;
+  return anyAlpha ? base + ',trans:1b}' : base + '}';
+}
+
+function render() {
+  $('#snbtOut').value = buildSNBT();
+  Preview.update();
+
+  if (activeBoxIndex < 0 || !boxNodes[activeBoxIndex]) {
+    $('#fullArrayOut').value = ''; $('#indicatorOut').value = ''; $('#bitListOut').value = '';
+    $('#shortsOut').value = ''; $('#packedOut').value = '';
+    return;
+  }
+
+  const node = boxNodes[activeBoxIndex];
+  const b = readBoxData(node);
+  const indPackGlobal = buildIndicatorAndPacked();
+
+  if (node._importIndicator !== undefined) {
+    $('#indicatorOut').value = node._importIndicator;
+    $('#bitListOut').value = unsignedToBinary32(node._importUnsigned || (node._importIndicator >>> 0));
+    $('#shortsOut').value = (node._importShorts || []).join(', ');
+    $('#packedOut').value = (node._importPacked || []).join('\n');
+    $('#fullArrayOut').value = JSON.stringify([b.minX, b.minY, b.minZ, b.maxX, b.maxY, b.maxZ, node._importIndicator].concat(node._importPacked || []));
+  } else if (indPackGlobal.any) {
+    $('#indicatorOut').value = indPackGlobal.indicatorSigned;
+    $('#bitListOut').value = unsignedToBinary32(indPackGlobal.indicatorUnsigned);
+    $('#shortsOut').value = indPackGlobal.shorts.join(', ');
+    $('#packedOut').value = indPackGlobal.packed.join('\n');
+    const arr = [b.minX, b.minY, b.minZ, b.maxX, b.maxY, b.maxZ, indPackGlobal.indicatorSigned].concat(indPackGlobal.packed);
+    $('#fullArrayOut').value = JSON.stringify(arr);
+  } else {
+    $('#indicatorOut').value = ''; $('#bitListOut').value = ''; $('#shortsOut').value = ''; $('#packedOut').value = '';
+    $('#fullArrayOut').value = JSON.stringify([b.minX, b.minY, b.minZ, b.maxX, b.maxY, b.maxZ]);
+  }
+}
+
+/**
+ * Pulls box entries back out of a pasted SNBT string. Handles the same two
+ * shapes the exporter produces: a proper "t:{...}" map, or (as a fallback)
+ * any bare "[I; ...]" arrays found anywhere in the text.
+ */
+function extractSelectionFromText(raw) {
+  raw = (raw || '').toString();
+  const gridMatch = raw.match(/grid\s*:\s*(-?\d+)/);
+  const entries = [];
+  const tMatch = raw.match(/t\s*:\s*\{([\s\S]*?)\}\s*(?:,|$)/);
+
+  if (tMatch) {
+    const tContent = tMatch[1];
+    const keyRe = /"([^\\"]+)"\s*:\s*\[([\s\S]*?)(?=\]\s*,\s*"|\]\s*\}|$)/g;
+    let m;
+    while ((m = keyRe.exec(tContent)) !== null) {
+      const key = m[1];
+      const arrContent = m[2];
+      const reGroups = /\[I;([^\]]+)\]/g;
+      const groups = [];
+      let mm;
+      while ((mm = reGroups.exec(arrContent)) !== null) {
+        const nums = mm[1].split(',').map(x => x.trim()).filter(x => x !== '').map(x => +x);
+        groups.push(nums);
+      }
+      let currentColor = undefined;
+      for (const grp of groups) {
+        if (grp.length === 1) {
+          currentColor = grp[0];
+        } else if (grp.length >= 6) {
+          const entry = { key: key, nums: grp };
+          if (currentColor !== undefined) entry.color = currentColor;
+          entries.push(entry);
+        }
+      }
+    }
+  }
+
+  if (entries.length === 0) {
+    const re2 = /\[I;([^\]]+)\]/g;
+    let mm;
+    while ((mm = re2.exec(raw)) !== null) {
+      const nums = mm[1].split(',').map(x => +x.trim()).filter(n => !isNaN(n));
+      if (nums.length >= 6) entries.push({ key: 'unknown', nums });
+    }
+  }
+
+  return { grid: gridMatch ? +gridMatch[1] : 0, entries };
+}
+
+function rebuildGroups() {
+  const texMap = new Map(), colMap = new Map();
+  boxNodes.forEach((p, i) => {
+    const bidEl = p.querySelector('.blockId');
+    const id = bidEl ? bidEl.value.trim() : (p.dataset.blockId || '');
+    const c = Number(p._colorPacked || p.dataset.color || 0) >>> 0;
+    if (!texMap.has(id)) texMap.set(id, []);
+    texMap.get(id).push(i);
+    if (!colMap.has(c)) colMap.set(c, []);
+    colMap.get(c).push(i);
+  });
+
+  const tb = $('#groupsByTexture');
+  if (tb) tb.innerHTML = '';
+  for (const [id, idxs] of texMap.entries()) {
+    const g = document.createElement('div'); g.className = 'group';
+    const sw = document.createElement('div'); sw.className = 'swatch';
+    const firstIdx = idxs && idxs.length ? idxs[0] : null;
+    const repColor = (firstIdx !== null && boxNodes[firstIdx] && boxNodes[firstIdx]._colorPacked !== undefined) ? (boxNodes[firstIdx]._colorPacked >>> 0) : 0;
+    sw.style.background = rgbaFromPacked(repColor);
+    g.appendChild(sw);
+
+    const left = document.createElement('div'); left.style.flex = '1';
+    const input = document.createElement('input'); input.type = 'text'; input.value = id;
+    left.appendChild(input); g.appendChild(left);
+
+    input.addEventListener('input', () => {
+      const val = input.value;
+      idxs.forEach(i => {
+        const box = boxNodes[i]; if (!box) return;
+        const bid = box.querySelector('.blockId'); if (bid) bid.value = val;
+        box.dataset.blockId = val;
+      });
+      render();
+      setStatus('Group block ID updating');
+    });
+    input.addEventListener('change', () => { rebuildGroups(); setStatus('Group block ID applied'); });
+
+    const sel = document.createElement('select');
+    sel.size = Math.min(6, idxs.length); sel.style.width = '260px';
+    idxs.forEach(i => {
+      const b = readBoxData(boxNodes[i]);
+      const opt = document.createElement('option');
+      opt.value = i; opt.text = `Box ${i + 1} — min:${b.minX},${b.minY},${b.minZ} size:${b.maxX - b.minX}x${b.maxY - b.minY}x${b.maxZ - b.minZ}`;
+      sel.appendChild(opt);
+    });
+    sel.addEventListener('change', () => { const idx = Number(sel.value); if (!isNaN(idx)) openBox(boxNodes[idx]); });
+    g.appendChild(sel);
+    tb.appendChild(g);
+  }
+
+  const cb = $('#groupsByColor');
+  if (cb) cb.innerHTML = '';
+  for (const [c, idxs] of colMap.entries()) {
+    const rgba = (function (s) { s = s >>> 0; return { a: (s >>> 24) & 0xFF, r: (s >>> 16) & 0xFF, g: (s >>> 8) & 0xFF, b: s & 0xFF }; })(Number(c));
+    const g = document.createElement('div'); g.className = 'group';
+    const sw = document.createElement('div'); sw.className = 'swatch';
+    sw.style.background = `rgba(${rgba.r},${rgba.g},${rgba.b},${rgba.a / 255})`;
+    g.appendChild(sw);
+
+    const colorInput = document.createElement('input');
+    colorInput.type = 'color';
+    colorInput.value = '#' + ((rgba.r << 16) | (rgba.g << 8) | rgba.b).toString(16).padStart(6, '0');
+    colorInput.style.width = '32px'; colorInput.style.height = '32px'; colorInput.style.padding = '0';
+    colorInput.style.borderRadius = '6px'; colorInput.style.border = '1px solid var(--field-border)';
+
+    const alphaInput = document.createElement('input');
+    alphaInput.type = 'number'; alphaInput.min = 0; alphaInput.max = 255; alphaInput.value = rgba.a; alphaInput.style.width = '80px';
+
+    const groupBoxPreview = document.createElement('div');
+    groupBoxPreview.className = 'color-box';
+    groupBoxPreview.style.width = '28px'; groupBoxPreview.style.height = '28px';
+    groupBoxPreview.style.borderRadius = '6px'; groupBoxPreview.style.border = '1px solid #333';
+
+    // One place that keeps the swatch + preview chip in sync with the pickers,
+    // instead of the same update logic being wired up twice.
+    function syncGroupPreview() {
+      try {
+        const rgb = parseInt(colorInput.value.replace('#', ''), 16) || 0;
+        const a = (Number(alphaInput.value) || 0) & 0xFF;
+        const packed = (((a << 24) >>> 0) | (rgb >>> 0)) >>> 0;
+        sw.style.background = rgbaFromPacked(packed);
+        groupBoxPreview.style.background = rgbaFromPacked(packed);
+      } catch (e) { /* ignore malformed color input mid-edit */ }
+    }
+
+    colorInput.addEventListener('input', () => {
+      const rgb = parseInt(colorInput.value.replace('#', ''), 16) || 0;
+      const aVal = (Number(alphaInput.value) || 0) & 0xFF;
+      idxs.forEach(i => {
+        const box = boxNodes[i]; if (!box) return;
+        box._colorHex = colorInput.value;
+        updatePackedColor(box);
+        const cp = box.querySelector('.colorPicker'); if (cp) cp.value = colorInput.value;
+        const cbx = box.querySelector('.color-box'); if (cbx) cbx.style.background = rgbaFromPacked(box._colorPacked);
+      });
+      syncGroupPreview();
+      render();
+    });
+    colorInput.addEventListener('change', () => { rebuildGroups(); render(); setStatus('Group color updated'); });
+
+    alphaInput.addEventListener('input', () => {
+      let a = Number(alphaInput.value) || 0; if (a < 0) a = 0; if (a > 255) a = 255; alphaInput.value = a;
+      idxs.forEach(i => {
+        const box = boxNodes[i]; if (!box) return;
+        box._alpha = a; updatePackedColor(box);
+        const aEl = box.querySelector('.alphaInput'); if (aEl) aEl.value = a;
+        const cbx = box.querySelector('.color-box'); if (cbx) cbx.style.background = rgbaFromPacked(box._colorPacked);
+      });
+      syncGroupPreview();
+      render();
+    });
+    alphaInput.addEventListener('change', () => { rebuildGroups(); render(); setStatus('Group alpha updated'); });
+
+    syncGroupPreview();
+
+    const controls = document.createElement('div');
+    controls.style.display = 'flex'; controls.style.gap = '8px'; controls.style.alignItems = 'center';
+    controls.appendChild(colorInput); controls.appendChild(alphaInput); controls.appendChild(groupBoxPreview);
+    g.appendChild(controls);
+
+    const sel = document.createElement('select');
+    sel.size = Math.min(6, idxs.length); sel.style.width = '260px'; sel.style.marginLeft = 'auto';
+    idxs.forEach(i => {
+      const b = readBoxData(boxNodes[i]);
+      const opt = document.createElement('option');
+      opt.value = i; opt.text = `Box ${i + 1} — min:${b.minX},${b.minY},${b.minZ} size:${b.maxX - b.minX}x${b.maxY - b.minY}x${b.maxZ - b.minZ}`;
+      sel.appendChild(opt);
+    });
+    sel.addEventListener('change', () => { const idx = Number(sel.value); if (!isNaN(idx)) openBox(boxNodes[idx]); });
+    g.appendChild(sel);
+
+    cb.appendChild(g);
+  }
+}
+
+/**
+ * Rebuilds the whole box list from a pasted/loaded SNBT string, decoding
+ * each box's indicator back into per-corner offsets and per-face flips.
+ * This is the mirror image of buildIndicatorAndPacked()/buildSNBT() above —
+ * same bit layout, read in reverse.
+ */
+function importSelection(raw) {
+  const parsed = extractSelectionFromText(raw);
+  if (!parsed.entries.length) throw new Error('No boxes found in selection');
+
+  boxNodes = [];
+  $('#boxesContainer').innerHTML = '';
+  setGridValue(parsed.grid || 16);
+
+  parsed.entries.forEach((e, i) => {
+    const nums = e.nums;
+    const minX = nums[0] | 0, minY = nums[1] | 0, minZ = nums[2] | 0;
+    // LittleTiles stores absolute max coordinates here, not a size delta —
+    // true size is (max - min), e.g. min=[1,0,1] max=[3,2,3] is a 2x2x2 box.
+    const maxX = nums[3] | 0, maxY = nums[4] | 0, maxZ = nums[5] | 0;
+    const data = { minX, minY, minZ, maxX, maxY, maxZ, blockId: e.key };
+
+    if (e.color !== undefined) {
+      const colorU = (e.color >>> 0);
+      const alpha = (colorU >>> 24) & 0xFF;
+      const rgb = colorU & 0xFFFFFF;
+      data._colorHex = '#' + rgb.toString(16).padStart(6, '0');
+      data._alpha = alpha;
+      data._colorPacked = colorU >>> 0;
+    }
+
+    if (nums.length > 6) {
+      const indSigned = nums[6] | 0;
+      const indU = indSigned >>> 0;
+      const cornerBits = indU & 0xFFFFFF;
+      const nBits = popcount(cornerBits);
+      const nPacked = Math.ceil(nBits / 2);
+      const packedWords = nums.slice(7, 7 + nPacked);
+
+      const shorts = [];
+      for (let j = 0; j < nPacked; j++) {
+        const w = (packedWords[j] || 0) >>> 0;
+        shorts.push(toSigned16((w >>> 16) & 0xFFFF));
+        shorts.push(toSigned16(w & 0xFFFF));
+      }
+
+      data._indicatorSigned = toSigned32(indSigned);
+      data._indicatorUnsigned = indU;
+      data._packed = packedWords.map(x => toSigned32(x));
+      data._shorts = shorts.slice(0, nBits);
+
+      const corners = Array.from({ length: 8 }, () => [0, 0, 0]);
+      let si = 0;
+      for (let bit = 0; bit < 24; bit++) {
+        const idx = Math.floor(bit / 3), axis = bit % 3;
+        if (cornerBits & (1 << bit)) corners[idx][axis] = data._shorts[si++] || 0;
+      }
+      data._corners = corners;
+
+      const flips = {};
+      faceMap.forEach(f => { flips[f.id] = !!(indU & (1 << f.bit)); });
+      data._flips = flips;
+    } else {
+      data._corners = Array.from({ length: 8 }, () => [0, 0, 0]);
+      data._flips = {};
+    }
+
+    const node = createBox(i, data);
+    boxNodes.push(node);
+    $('#boxesContainer').appendChild(node);
+  });
+
+  if (boxNodes[0]) openBox(boxNodes[0]);
+  rebuildGroups();
+  setStatus('Imported');
+  render();
+  Preview.fit();
+}
+
+function setStatus(s) { const el = $('#status'); if (el) el.textContent = 'Status: ' + s; }
+
+// Grid is one of the mod's fixed resolution steps (2,4,8,16...); if an
+// imported selection carries something outside that list, add it as a
+// one-off option instead of silently dropping the value.
+function setGridValue(v) {
+  const sel = $('#gridInput'); if (!sel) return;
+  const str = String(v);
+  if (![...sel.options].some(o => o.value === str)) {
+    // Drop whichever option we auto-added last time (if any) before adding
+    // this one, so the list holds at most one ad-hoc custom entry, not a
+    // pile of every value that's ever been typed in.
+    const oldCustom = [...sel.options].find(o => o.dataset.custom === '1');
+    if (oldCustom) oldCustom.remove();
+    const opt = document.createElement('option');
+    opt.value = str; opt.textContent = str;
+    opt.dataset.custom = '1';
+    const customSentinel = [...sel.options].find(o => o.value === 'custom');
+    if (customSentinel) sel.insertBefore(opt, customSentinel); else sel.appendChild(opt);
+  }
+  sel.value = str;
+  sel.dataset.lastValue = str; // remembered so getGridValue() has something sane while Custom… is mid-edit
+}
+
+// Reads the grid select, but doesn't trust it blindly: while "Custom…" is
+// selected and the number field next to it hasn't been confirmed yet, the
+// select's own value is the non-numeric string "custom" — anything reading
+// the grid during that window (export, floor grid spacing) should keep
+// using the last confirmed number instead of silently falling back to 16.
+function getGridValue() {
+  const el = $('#gridInput'); if (!el) return 16;
+  const n = +el.value;
+  if (n > 0) return n;
+  const last = +el.dataset.lastValue;
+  return last > 0 ? last : 16;
+}
+
+function initCorners() {
+  const names = ['East Up North', 'East Up South', 'East Down North', 'East Down South', 'West Up North', 'West Up South', 'West Down North', 'West Down South'];
+  const container = $('#corners');
+  if (!container) return;
+  container.innerHTML = '';
+  names.forEach((name, i) => {
+    const el = document.createElement('div');
+    el.className = 'corner';
+    el.innerHTML = `<h3>${name}</h3><div class="grid cols-3">` +
+      `<div><label>X</label><input type="number" data-corner="${i}" data-axis="0" value="0"></div>` +
+      `<div><label>Y</label><input type="number" data-corner="${i}" data-axis="1" value="0"></div>` +
+      `<div><label>Z</label><input type="number" data-corner="${i}" data-axis="2" value="0"></div>` +
+      `</div>`;
+    container.appendChild(el);
+  });
+  $$('input[data-corner]').forEach(inp => inp.addEventListener('input', () => { applyControlsToActiveBox(); }));
+}
+
+// ---------------------------------------------------------------------------
+// 3D Preview
+//
+// Renders every box in boxNodes as a Three.js mesh. A plain box's 8 corners
+// sit at the obvious combinations of min/max X/Y/Z; when a box has corner
+// offsets set, each corner is nudged by its stored [x,y,z] offset before the
+// faces are built, which is exactly what gives LittleTiles' "transformable"
+// corner-blocks their sloped/wedge look. Corner indices 0-7 match the
+// East/West/Up/Down/North/South labels in initCorners() above, and
+// Minecraft's own axis convention (+X East, +Y Up, +Z South).
+//
+// A "flipped" face is a geometry flip, not a texture flip: it reverses that
+// face's triangle winding (its stored vertex order), which is what actually
+// gets exported and is what the real game uses for backface culling. This
+// preview renders double-sided, though, so a flipped face still shows up as
+// a normal solid face here — nothing in the editor should vanish just
+// because a flip flag is set.
+//
+// Box position/size numbers are used as Three.js units directly; the Grid
+// setting never rescales them (grid is fixed at the mod's own resolution
+// steps — 2, 4, 8, 16... — it only changes how many units make up one
+// in-game block, which is what the floor grid's spacing reflects).
+// ---------------------------------------------------------------------------
+const Preview = (() => {
+  let renderer, scene, camera, controls, meshGroup, floorGrid;
+  let container = null, initialized = false;
+  let viewMode = 'solid'; // 'solid' | 'solidwire' | 'wire'
+
+  // Each face: which 4 corner indices form its quad (already in outward CCW
+  // order — see cornerBasePositions below), and which global flip flag it
+  // corresponds to.
+  const FACES = [
+    { q: [0, 1, 3, 2], flip: 'flipEast' },  // +X
+    { q: [4, 6, 7, 5], flip: 'flipWest' },  // -X
+    { q: [0, 4, 5, 1], flip: 'flipUp' },    // +Y
+    { q: [2, 3, 7, 6], flip: 'flipDown' },  // -Y
+    { q: [1, 5, 7, 3], flip: 'flipSouth' }, // +Z
+    { q: [0, 2, 6, 4], flip: 'flipNorth' }, // -Z
+  ];
+
+  function cornerBasePositions(b) {
+    const { minX, minY, minZ, maxX, maxY, maxZ } = b;
+    return [
+      [maxX, maxY, minZ], [maxX, maxY, maxZ], [maxX, minY, minZ], [maxX, minY, maxZ], // East  Up/Down x North/South
+      [minX, maxY, minZ], [minX, maxY, maxZ], [minX, minY, minZ], [minX, minY, maxZ], // West  Up/Down x North/South
+    ];
+  }
+
+  function offsetCorners(b, corners) {
+    const base = cornerBasePositions(b);
+    return base.map((p, i) => {
+      const off = (corners && corners[i]) || [0, 0, 0];
+      return [p[0] + (off[0] || 0), p[1] + (off[1] || 0), p[2] + (off[2] || 0)];
+    });
+  }
+
+  function buildSolidGeometry(pts, flips) {
+    const positions = [];
+    FACES.forEach(face => {
+      const flipped = flips && flips[face.flip];
+      const q = flipped ? [face.q[3], face.q[2], face.q[1], face.q[0]] : face.q;
+      [[q[0], q[1], q[2]], [q[0], q[2], q[3]]].forEach(tri => {
+        tri.forEach(idx => positions.push(pts[idx][0], pts[idx][1], pts[idx][2]));
+      });
+    });
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    geo.computeVertexNormals();
+    return geo;
+  }
+
+  // Darkens a color for solid+wire edge lines (readable against any face color).
+  function edgeColorSolidWire(hexInt) {
+    return new THREE.Color(hexInt).multiplyScalar(0.35);
+  }
+  // For wireframe-only mode, use the box's own color but keep it visible
+  // against the near-black scene background.
+  function edgeColorWireOnly(hexInt) {
+    const c = new THREE.Color(hexInt);
+    const lum = 0.2126 * c.r + 0.7152 * c.g + 0.0722 * c.b;
+    if (lum < 0.28) c.lerp(new THREE.Color(0xffffff), 0.55);
+    return c;
+  }
+
+  function buildBoxVisual(node) {
+    const b = readBoxData(node);
+    const corners = node._corners || Array.from({ length: 8 }, () => [0, 0, 0]);
+    const flips = node._flips || {};
+    const colorPacked = (node._colorPacked !== undefined) ? (node._colorPacked >>> 0) : 0xffffffff;
+    const rgb = colorPacked & 0xFFFFFF;
+    const alpha = (node._colorPacked !== undefined) ? (((colorPacked >>> 24) & 0xFF) / 255) : 1;
+
+    const pts = offsetCorners(b, corners);
+    const geo = buildSolidGeometry(pts, flips);
+    const group = new THREE.Group();
+
+    if (viewMode !== 'wire') {
+      const mat = new THREE.MeshStandardMaterial({
+        color: rgb, roughness: 0.85, metalness: 0.05, side: THREE.DoubleSide,
+        transparent: alpha < 1, opacity: Math.max(0.05, alpha),
+        polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1,
+      });
+      group.add(new THREE.Mesh(geo, mat));
+    }
+    if (viewMode !== 'solid') {
+      const wireGeo = new THREE.WireframeGeometry(geo);
+      const wireColor = viewMode === 'wire' ? edgeColorWireOnly(rgb) : edgeColorSolidWire(rgb);
+      const wireMat = new THREE.LineBasicMaterial({ color: wireColor, transparent: true, opacity: viewMode === 'wire' ? 0.9 : 0.6 });
+      group.add(new THREE.LineSegments(wireGeo, wireMat));
+    }
+    return group;
+  }
+
+  function currentGridValue() {
+    return Math.max(1, getGridValue());
+  }
+
+  function rebuildFloorGrid() {
+    if (floorGrid) {
+      scene.remove(floorGrid);
+      floorGrid.geometry.dispose(); floorGrid.material.dispose();
+    }
+    const blocksSpan = 16; // draw a 16x16-block floor, regardless of grid resolution
+    const cell = currentGridValue();
+    floorGrid = new THREE.GridHelper(blocksSpan * cell, blocksSpan, 0x3a4070, 0x232847);
+    scene.add(floorGrid);
+  }
+
+  function init() {
+    container = document.getElementById('previewCanvas');
+    if (!container || typeof THREE === 'undefined') return false;
+
+    scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x0b0e1a);
+
+    const w = container.clientWidth || 400, h = container.clientHeight || 360;
+    camera = new THREE.PerspectiveCamera(45, w / h, 0.001, 100000);
+    camera.position.set(24, 22, 30);
+
+    // Logarithmic depth buffer, since near/far now track the live camera
+    // distance across a wide range (see animate()) instead of one fixed pair.
+    renderer = new THREE.WebGLRenderer({ antialias: true, logarithmicDepthBuffer: true });
+    renderer.setPixelRatio(window.devicePixelRatio || 1);
+    renderer.setSize(w, h);
+    container.innerHTML = '';
+    container.appendChild(renderer.domElement);
+
+    controls = new THREE.OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.08;
+    controls.mouseButtons = { LEFT: THREE.MOUSE.ROTATE, MIDDLE: THREE.MOUSE.PAN };
+
+    scene.add(new THREE.HemisphereLight(0xffffff, 0x1a1d2e, 1.1));
+    const dirLight = new THREE.DirectionalLight(0xffffff, 0.6);
+    dirLight.position.set(20, 30, 10);
+    scene.add(dirLight);
+
+    rebuildFloorGrid();
+    scene.add(new THREE.AxesHelper(18)); // red=East(+X)/West, green=Up(+Y)/Down, blue=South(+Z)/North
+
+    meshGroup = new THREE.Group();
+    scene.add(meshGroup);
+
+    // Watching the container itself (not just window 'resize') catches every
+    // reason its size can change: window resize, browser zoom, or the flex
+    // layout reflowing as sibling panels grow/shrink or wrap.
+    if (window.ResizeObserver) {
+      let scheduled = false;
+      const ro = new ResizeObserver(() => {
+        if (scheduled) return;
+        scheduled = true;
+        requestAnimationFrame(() => { scheduled = false; onResize(); });
+      });
+      ro.observe(container);
+    } else {
+      window.addEventListener('resize', onResize);
+    }
+    initialized = true;
+    animate();
+    return true;
+  }
+
+  function onResize() {
+    if (!container || !renderer || !camera) return;
+    const w = container.clientWidth, h = container.clientHeight;
+    if (!w || !h) return;
+    renderer.setPixelRatio(window.devicePixelRatio || 1); // browser zoom changes this after init
+    camera.aspect = w / h;
+    camera.updateProjectionMatrix();
+    renderer.setSize(w, h);
+  }
+
+  function animate() {
+    requestAnimationFrame(animate);
+    if (controls) controls.update();
+    if (camera && controls) {
+      // Near scales down and far scales up with the current view distance,
+      // so a close-up on a tiny corner-offset box and a zoomed-out view of
+      // a multi-block build are both clipped correctly — not just whatever
+      // distance was true the last time Reset View was clicked.
+      const dist = Math.max(0.01, camera.position.distanceTo(controls.target));
+      camera.near = Math.max(0.001, dist / 1000);
+      camera.far = Math.max(dist * 200, 50);
+      camera.updateProjectionMatrix();
+    }
+    if (renderer && scene && camera) renderer.render(scene, camera);
+  }
+
+  function rebuild() {
+    while (meshGroup.children.length) {
+      const g = meshGroup.children[0];
+      meshGroup.remove(g);
+      g.children.forEach(child => { child.geometry.dispose(); child.material.dispose(); });
+    }
+    boxNodes.forEach(node => meshGroup.add(buildBoxVisual(node)));
+    rebuildFloorGrid();
+  }
+
+  function fit() {
+    if (!initialized && !init()) return;
+    const box = new THREE.Box3();
+    let any = false;
+    boxNodes.forEach(node => {
+      const b = readBoxData(node);
+      const corners = node._corners || Array.from({ length: 8 }, () => [0, 0, 0]);
+      offsetCorners(b, corners).forEach(p => { box.expandByPoint(new THREE.Vector3(p[0], p[1], p[2])); any = true; });
+    });
+    if (!any) {
+      camera.position.set(24, 22, 30);
+      controls.target.set(0, 0, 0);
+      controls.update();
+      return;
+    }
+    const center = box.getCenter(new THREE.Vector3());
+    const size = box.getSize(new THREE.Vector3());
+    const radius = Math.max(size.x, size.y, size.z, 4) * 1.4;
+    controls.target.copy(center);
+    camera.position.set(center.x + radius, center.y + radius * 0.85, center.z + radius);
+    camera.updateProjectionMatrix();
+    controls.update();
+  }
+
+  return {
+    update() { if (!initialized && !init()) return; rebuild(); },
+    fit() { fit(); },
+    setMode(mode) { viewMode = mode; if (!initialized && !init()) return; rebuild(); },
+  };
+})();
+
+// ---- Top-level UI wiring ---------------------------------------------------
+
+$('#importBtn').addEventListener('click', () => { try { importSelection($('#importBox').value); } catch (e) { alert(e.message); } });
+$('#fileInput').addEventListener('change', e => {
+  const f = e.target.files[0]; if (!f) return;
+  const r = new FileReader();
+  r.onload = () => { $('#importBox').value = r.result; try { importSelection(r.result); } catch (err) { alert(err.message); } };
+  r.readAsText(f);
+});
+
+$('#downloadBtn').addEventListener('click', () => {
+  const snbt = $('#snbtOut').value; if (!snbt) return;
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([snbt], { type: 'text/plain' }));
+  a.download = 'selection.txt';
+  a.click();
+  setStatus('Saved');
+});
+$('#copyBtn').addEventListener('click', () => {
+  const snbt = $('#snbtOut').value; if (!snbt) return;
+  navigator.clipboard.writeText(snbt);
+  setStatus('Copied');
+});
+$('#clearBtn').addEventListener('click', () => {
+  $('#importBox').value = ''; $('#fileInput').value = ''; $('#snbtOut').value = '';
+  setStatus('Cleared');
+  $('#indicatorOut').value = ''; $('#bitListOut').value = ''; $('#shortsOut').value = '';
+  $('#packedOut').value = ''; $('#fullArrayOut').value = '';
+  boxNodes = []; $('#boxesContainer').innerHTML = '';
+  const tb = $('#groupsByTexture'); if (tb) tb.innerHTML = '';
+  const cb = $('#groupsByColor'); if (cb) cb.innerHTML = '';
+  faceMap.forEach(f => { const el = $('#' + f.id); if (el) el.checked = false; });
+  $$('input[data-corner]').forEach(inp => inp.value = '0');
+  setGridValue(16);
+  const gridCustomEl = $('#gridCustomInput'); if (gridCustomEl) gridCustomEl.style.display = 'none';
+  render();
+});
+
+$('#addBoxBtn').addEventListener('click', () => { addBox(); setStatus('Box added'); });
+$('#openAllBtn').addEventListener('click', () => {
+  $$('#boxesContainer .collapsible-content').forEach(c => c.classList.add('open'));
+  $$('#boxesContainer .collapsible-header').forEach(h => h.classList.add('active'));
+});
+$('#closeAllBtn').addEventListener('click', () => {
+  $$('#boxesContainer .collapsible-content').forEach(c => c.classList.remove('open'));
+  $$('#boxesContainer .collapsible-header').forEach(h => h.classList.remove('active'));
+});
+$('#previewFitBtn').addEventListener('click', () => Preview.fit());
+$$('.view-mode-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    $$('.view-mode-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    Preview.setMode(btn.dataset.mode);
+  });
+});
+
+document.addEventListener('DOMContentLoaded', () => {
+  initCorners();
+  const gridEl = $('#gridInput');
+  const gridCustomEl = $('#gridCustomInput');
+  if (gridEl) gridEl.dataset.lastValue = gridEl.value; // seed the fallback getGridValue() relies on
+  let lastGridValue = gridEl ? gridEl.value : '16';
+
+  function confirmCustomGrid() {
+    const n = Math.max(1, Math.round(+gridCustomEl.value) || 0);
+    if (n > 0) { setGridValue(n); lastGridValue = String(n); }
+    else { setGridValue(lastGridValue); }
+    gridCustomEl.style.display = 'none';
+    render();
+  }
+
+  if (gridEl) gridEl.addEventListener('change', () => {
+    if (gridEl.value === 'custom') {
+      gridCustomEl.style.display = 'block';
+      gridCustomEl.value = '';
+      gridCustomEl.focus();
+      return; // wait for a real number before touching box data
+    }
+    lastGridValue = gridEl.value;
+    gridEl.dataset.lastValue = gridEl.value;
+    gridCustomEl.style.display = 'none';
+    const staleCustom = [...gridEl.options].find(o => o.dataset.custom === '1' && o.value !== gridEl.value);
+    if (staleCustom) staleCustom.remove();
+    render();
+  });
+  if (gridCustomEl) {
+    gridCustomEl.addEventListener('change', confirmCustomGrid);
+    gridCustomEl.addEventListener('keydown', e => { if (e.key === 'Enter') confirmCustomGrid(); });
+  }
+
+  faceMap.forEach(f => { const el = $('#' + f.id); if (el) el.addEventListener('input', () => { applyControlsToActiveBox(); }); });
+  render();
+  Preview.fit();
+});
+</script>
+</body>
+</html>

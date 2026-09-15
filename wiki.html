@@ -1,0 +1,232 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>LittleTiles Selection Converter — Guide</title>
+  <style>
+    :root{
+      --bg:#0f1220; --panel:#171a2b; --muted:#9aa3b2; --text:#e9edf7;
+      --active:#2b3050; --border:#242a48; --field-bg:#0e1120; --field-border:#2a3156;
+      --accent:#7d8cc4;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;font:15px/1.6 system-ui,-apple-system,'Segoe UI',Roboto,Arial;background:var(--bg);color:var(--text)}
+    header{padding:22px 18px;border-bottom:1px solid rgba(36,42,72,.6);background:linear-gradient(180deg,rgba(15,18,32,.98),rgba(15,18,32,.9));position:sticky;top:0;z-index:5}
+    header .row{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;max-width:900px;margin:0 auto;flex-wrap:wrap}
+    h1{margin:0 0 6px;font-size:20px}
+    .muted{color:var(--muted)}
+    .btn{display:inline-block;background:var(--field-bg);color:var(--text);border:1px solid var(--field-border);padding:9px 14px;border-radius:8px;cursor:pointer;text-decoration:none;white-space:nowrap;font-size:14px}
+    .btn:hover{border-color:#3c4670}
+    main{max-width:900px;margin:0 auto;padding:24px 18px 80px;display:grid;grid-template-columns:190px 1fr;gap:32px;align-items:start}
+    @media (max-width:760px){ main{grid-template-columns:1fr} nav.toc{position:static} }
+    nav.toc{position:sticky;top:100px;font-size:13px}
+    nav.toc div{color:var(--muted);text-transform:uppercase;letter-spacing:.04em;font-size:11px;margin-bottom:8px}
+    nav.toc a{display:block;color:var(--text);text-decoration:none;padding:4px 0;border-left:2px solid transparent;padding-left:10px;opacity:.75}
+    nav.toc a:hover{opacity:1;border-left-color:var(--accent)}
+    article section{margin-bottom:42px;scroll-margin-top:90px}
+    h2{font-size:19px;margin:0 0 12px;padding-bottom:8px;border-bottom:1px solid var(--border)}
+    h3{font-size:15px;margin:22px 0 8px;color:#cfe0ff}
+    p{margin:0 0 12px}
+    ul,ol{margin:0 0 12px;padding-left:22px}
+    li{margin-bottom:6px}
+    code{background:var(--field-bg);border:1px solid var(--field-border);border-radius:4px;padding:1px 6px;font-family:ui-monospace,Menlo,monospace;font-size:.9em}
+    pre{background:var(--field-bg);border:1px solid var(--field-border);border-radius:8px;padding:12px 14px;overflow-x:auto;font-family:ui-monospace,Menlo,monospace;font-size:13px;line-height:1.5}
+    .panel{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:16px 18px;margin:14px 0}
+    .note{border-left:3px solid var(--accent);padding:10px 14px;background:rgba(125,140,196,.08);border-radius:0 8px 8px 0;margin:14px 0}
+    table{border-collapse:collapse;width:100%;margin:12px 0;font-size:14px}
+    th,td{text-align:left;padding:7px 10px;border-bottom:1px solid var(--border)}
+    th{color:var(--muted);font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.03em}
+    a{color:#9db4ff}
+    footer{max-width:900px;margin:0 auto;padding:20px 18px 60px;color:var(--muted);font-size:13px;border-top:1px solid var(--border)}
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="row">
+    <div>
+      <h1>LittleTiles Selection Converter — Guide</h1>
+      <div class="muted">What the tool does, how the format works, and how to use each panel.</div>
+    </div>
+    <a href="index.html" class="btn">⬅ Open the Tool</a>
+  </div>
+</header>
+
+<main>
+  <nav class="toc">
+    <div>On this page</div>
+    <a href="#what-is-it">What is this?</a>
+    <a href="#quick-start">Quick start</a>
+    <a href="#the-format">The SNBT format</a>
+    <a href="#grid">Grid, explained</a>
+    <a href="#interface">Interface walkthrough</a>
+    <a href="#3d-preview">3D preview</a>
+    <a href="#workflows">Common workflows</a>
+    <a href="#gotchas">Gotchas &amp; FAQ</a>
+  </nav>
+
+  <article>
+    <section id="what-is-it">
+      <h2>What is this?</h2>
+      <p>
+        <a href="https://github.com/CreativeMD/LittleTiles" target="_blank" rel="noopener">LittleTiles</a> is a
+        Minecraft mod that lets you fill a block's space with many small "tile" boxes instead of one plain
+        block — each box gets its own position, size, block/texture, color, and (for sloped or wedge shapes)
+        independently-moved corners. When you copy a selection in-game, LittleTiles serializes it as SNBT
+        (Minecraft's string form of NBT data): one long string with an integer array per box.
+      </p>
+      <p>
+        This tool is a workbench for that string. Paste a selection in, edit boxes one at a time or as a group
+        (by texture or by color), tweak corner offsets and face flips, watch a live 3D preview of the result,
+        and export the edited selection back to SNBT to paste into the game.
+      </p>
+      <p class="note">This is an independent fan tool, not part of LittleTiles itself. It reads and writes the
+        same SNBT format the mod uses, reverse-engineered from real exported selections.</p>
+    </section>
+
+    <section id="quick-start">
+      <h2>Quick start</h2>
+      <ol>
+        <li>Copy a selection in-game with LittleTiles, or grab the SNBT/JSON text some other way.</li>
+        <li>Paste it into the <strong>Import Selection</strong> box (or use <strong>Choose File</strong>) and click <strong>Import</strong>.</li>
+        <li>Your boxes appear in the <strong>Boxes</strong> panel and in the <strong>3D Preview</strong>. Click a box to open it and edit its position, size, block ID, color, or alpha.</li>
+        <li>Use <strong>Groups</strong> to recolor or retexture several boxes at once.</li>
+        <li>When you're happy with the result, copy or download the text from <strong>Final SNBT Output</strong> and paste it back into the game.</li>
+      </ol>
+    </section>
+
+    <section id="the-format">
+      <h2>The SNBT format</h2>
+      <p>A selection looks roughly like this:</p>
+      <pre>{boxes:1,grid:4,min:[I;1,0,1],size:[I;2,2,2],t:{"minecraft:stripped_spruce_wood[axis=y]":[[I;-1],[I;1,0,1,3,2,3,-2147418096,-65538]]},tiles:1}</pre>
+      <p>The parts that matter for editing:</p>
+      <table>
+        <tr><th>Field</th><th>Meaning</th></tr>
+        <tr><td><code>grid</code></td><td>How finely the block is subdivided. See <a href="#grid">Grid, explained</a>.</td></tr>
+        <tr><td><code>t</code></td><td>One entry per block/texture ID, each holding that texture's boxes.</td></tr>
+        <tr><td><code>[I;-1]</code></td><td>A single-number array right before a box is a color header (packed ARGB) — it applies to every box after it until the next color header.</td></tr>
+        <tr><td><code>[I;1,0,1,3,2,3,…]</code></td><td>A box: <code>minX,minY,minZ,maxX,maxY,maxZ</code>, then optionally an indicator + packed corner/flip data.</td></tr>
+      </table>
+      <p class="note">
+        The 4th–6th numbers in a box array are <strong>absolute max coordinates</strong>, not a size added to
+        min. <code>min=(1,0,1)</code>, values <code>(3,2,3)</code> → true size is <code>(2,2,2)</code>. The
+        tool's <strong>sizeX/Y/Z</strong> fields show you that already-computed size — you never need to do the
+        subtraction yourself, it's just worth knowing if you're reading raw SNBT by eye.
+      </p>
+      <p>
+        When a box has corner offsets or flipped faces, the array carries two more things: an
+        <strong>indicator</strong> (one integer whose bits mark which of the 8 corners are offset, which faces
+        are flipped, and whether any of this data is present at all), and <strong>packed</strong> integers
+        holding the actual offset numbers, two squeezed into each integer. You don't need to hand-edit this —
+        the Corner Offsets and Flipped Faces controls read and write it for you — but the <strong>Result</strong>
+        panel shows the raw decoded values if you're curious or debugging.
+      </p>
+    </section>
+
+    <section id="grid">
+      <h2>Grid, explained</h2>
+      <p>
+        <code>grid</code> says how many tile-units make up one in-game block along each axis — it does
+        <strong>not</strong> rescale any box's position or size numbers. A box's <code>minX</code>,
+        <code>sizeX</code>, and so on mean the same raw units no matter what grid is selected.
+      </p>
+      <p>What changes with grid is how big one unit is <em>relative to a block</em>:</p>
+      <ul>
+        <li>At <code>grid=2</code>, a box with size 2 in every axis is exactly one full 1×1×1 block.</li>
+        <li>At <code>grid=4</code>, a box needs size 4 to fill a block — so a size-2 box is now a quarter of a
+          block's volume, and it takes 8 of them (2×2×2) to fill the space one grid=2 box used to fill.</li>
+        <li>Doubling the grid again (8, 16, 32…) keeps halving each axis the same way — each step is LittleTiles'
+          own "hammer it into smaller pieces" mechanic, one halving per step.</li>
+      </ul>
+      <p>
+        In this tool, grid mainly affects the 3D preview's floor: the grid lines on the floor are spaced to
+        match whatever grid value is selected, so each square you see really is one in-game block. Presets go
+        up to 1024; pick <strong>Custom…</strong> from the dropdown for anything higher.
+      </p>
+    </section>
+
+    <section id="interface">
+      <h2>Interface walkthrough</h2>
+
+      <h3>Controls</h3>
+      <p>Grid dropdown, six checkboxes for globally flipping a face, a set of X/Y/Z fields for the 8 corner
+        offsets, and the Import Selection box. Whatever you set here in Flipped Faces / Corner Offsets applies
+        to whichever box is currently open in the Boxes panel.</p>
+
+      <h3>Groups</h3>
+      <p>Boxes are grouped automatically — by texture (block ID) and separately by color. Edit a group's block
+        ID or color/alpha once and it applies to every box in that group; the dropdown next to each group jumps
+        you to a specific box within it.</p>
+
+      <h3>Boxes</h3>
+      <p>One card per box: min position, size, block ID, color, alpha. Click a card's header to expand it. Add
+        Box creates a fresh empty one; Open All / Close All are for scanning through a large selection quickly.</p>
+
+      <h3>Final SNBT Output &amp; Result</h3>
+      <p>Final SNBT Output is the live-rebuilt string, ready to copy or download. Result shows the currently
+        open box's raw indicator/corner data decoded — mostly useful if something looks wrong and you want to
+        see the numbers behind it.</p>
+    </section>
+
+    <section id="3d-preview">
+      <h2>3D preview</h2>
+      <p>
+        Every box renders live as you edit, using its own color and alpha. Corner offsets bend the box the same
+        way LittleTiles' transformable corners do — pull a top corner down to its base height and that side
+        collapses into a slope automatically, no separate "ramp" shape needed.
+      </p>
+      <table>
+        <tr><th>Control</th><th>Action</th></tr>
+        <tr><td>Left-click drag</td><td>Orbit</td></tr>
+        <tr><td>Middle-click drag</td><td>Pan</td></tr>
+        <tr><td>Scroll</td><td>Zoom</td></tr>
+        <tr><td>Right-click</td><td>Unbound</td></tr>
+        <tr><td>Reset View</td><td>Refit the camera to everything currently in the scene</td></tr>
+      </table>
+      <p>Three view modes, top-right of the panel:</p>
+      <ul>
+        <li><strong>Solid</strong> — filled faces only.</li>
+        <li><strong>Solid+Wire</strong> — filled faces with edge lines on top, including the diagonal through each face.</li>
+        <li><strong>Wireframe</strong> — edges only, no fill.</li>
+      </ul>
+      <p class="note">
+        Flipping a face reverses that face's stored triangle winding — the data that actually gets exported and
+        that the game uses for backface culling in-game. This preview renders every face solid regardless, so a
+        flip won't make anything disappear here; it's a change to the exported data, not to what you see.
+      </p>
+    </section>
+
+    <section id="workflows">
+      <h2>Common workflows</h2>
+      <h3>Recolor everything using one texture</h3>
+      <p>Find the texture in <strong>Groups → By texture</strong> and use its color picker + alpha field — every box sharing that block ID updates together.</p>
+      <h3>Build a simple wedge</h3>
+      <p>Add a box, then in Corner Offsets pull two adjacent top corners down by the box's own height (e.g. −2 on a size-2 box) — the top face becomes the ramp and the wall on that side collapses to an edge automatically.</p>
+      <h3>Work at a finer grid</h3>
+      <p>Pick a higher Grid value (or Custom… for anything past 1024) before you start placing boxes, so the floor reference in the 3D preview matches the resolution you're actually building at.</p>
+    </section>
+
+    <section id="gotchas">
+      <h2>Gotchas &amp; FAQ</h2>
+      <p><strong>My imported box looks bigger than expected.</strong> Double check you're reading the tool's
+        sizeX/Y/Z fields, not doing max-minus-min by hand on old exported text — see <a href="#the-format">The
+        SNBT format</a>.</p>
+      <p><strong>I flipped a face and nothing changed in the preview.</strong> That's expected — see the note in
+        <a href="#3d-preview">3D preview</a>. The flip is still recorded correctly for export.</p>
+      <p><strong>Does changing Grid move my boxes?</strong> No. It only changes the floor's line spacing in the
+        3D preview and the <code>grid</code> field in the exported header — box coordinates are untouched.</p>
+      <p><strong>Can I edit raw SNBT by hand and re-import?</strong> Yes — Import re-parses whatever's in the
+        text box, including anything you've hand-edited, as long as the structure stays valid.</p>
+    </section>
+  </article>
+</main>
+
+<footer>
+  LittleTiles Selection Converter is an unofficial fan-made tool for the
+  <a href="https://github.com/CreativeMD/LittleTiles" target="_blank" rel="noopener">LittleTiles</a> Minecraft mod.
+  <a href="index.html">Back to the tool</a>
+</footer>
+
+</body>
+</html>
