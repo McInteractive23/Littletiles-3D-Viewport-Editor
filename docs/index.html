@@ -14,6 +14,7 @@
     body{margin:0;font:14px/1.45 system-ui,-apple-system,'Segoe UI',Roboto,Arial;background:var(--bg);color:var(--text)}
     header{padding:18px;border-bottom:1px solid rgba(36,42,72,.6);background:linear-gradient(180deg,rgba(15,18,32,.98),rgba(15,18,32,.9));position:sticky;top:0}
     h1{margin:0;font-size:18px}
+    .version-badge{display:inline-block;margin-left:8px;padding:1px 8px;border:1px solid var(--field-border);border-radius:999px;color:var(--muted);font-size:11px;font-weight:600;letter-spacing:.02em;vertical-align:middle}
     main{padding:18px;display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap}
     .col{display:flex;flex-direction:column;gap:14px;min-width:320px}
     .col-left{flex:1.2 1 480px}
@@ -86,7 +87,7 @@
 <header>
   <div class="row" style="justify-content:space-between;align-items:flex-start">
     <div>
-      <h1>LittleTiles Selection Converter</h1>
+      <h1>LittleTiles Selection Converter <span class="version-badge" id="appVersion" title="Version 1.1.0">v1.1.0</span></h1>
       <div class="muted">Import SNBT/selection, edit multiple boxes, group tiles by block ID or color, edit global flips &amp; corner offsets, preview the result in 3D, then export updated SNBT.</div>
     </div>
     <div class="row-inline" style="gap:8px">
