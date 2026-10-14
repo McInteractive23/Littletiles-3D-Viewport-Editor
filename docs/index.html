@@ -60,6 +60,21 @@
     .preview-canvas canvas{display:block}
     .view-mode-btn{padding:6px 10px;font-size:12px}
     .view-mode-btn.active{background:var(--active);border-color:#3a4070;color:#e6f0ff}
+    .viewport-toolbar{position:absolute;display:flex;gap:6px;z-index:5}
+    .viewport-toolbar-transform{top:10px;left:10px}
+    .viewport-toolbar-shapes{top:52px;left:10px;flex-direction:column}
+    .viewport-toolbar-right{top:10px;right:10px;flex-wrap:wrap;justify-content:flex-end;max-width:calc(100% - 150px)}
+    .vp-sep{width:1px;align-self:stretch;margin:3px 2px;background:var(--field-border)}
+    .vp-toast{position:absolute;left:50%;bottom:14px;transform:translateX(-50%);padding:6px 12px;border-radius:8px;background:rgba(14,17,32,.92);border:1px solid var(--field-border);font-size:13px;opacity:0;pointer-events:none;transition:opacity .15s;z-index:6;white-space:nowrap}
+    .vp-toast.show{opacity:1}
+    .vp-marquee{position:absolute;display:none;border:1px dashed #ff9f1c;background:rgba(255,159,28,.12);pointer-events:none;z-index:4}
+    #previewCanvas canvas{user-select:none;-webkit-user-select:none}
+    .vp-icon-btn{width:34px;height:34px;display:flex;align-items:center;justify-content:center;background:rgba(14,17,32,.85);border:1px solid var(--field-border);border-radius:8px;color:var(--text);cursor:pointer;padding:0}
+    .vp-icon-btn:hover{border-color:#3c4670;background:rgba(23,26,43,.95)}
+    .vp-icon-btn:disabled{opacity:.4;cursor:default}
+    .vp-icon-btn:disabled:hover{border-color:var(--field-border);background:rgba(14,17,32,.85)}
+    .vp-icon-btn.active{background:var(--active);border-color:#3a4070;color:#e6f0ff}
+    .vp-icon-btn svg, .vp-icon-btn img{width:18px;height:18px;pointer-events:none;object-fit:contain}
     ::-webkit-scrollbar{width:10px;height:10px}
     ::-webkit-scrollbar-track{background:var(--scroll-track);border-radius:5px}
     ::-webkit-scrollbar-thumb{background:var(--scroll-thumb);border-radius:5px;border:2px solid var(--scroll-track)}
@@ -75,11 +90,31 @@
       <div class="muted">Import SNBT/selection, edit multiple boxes, group tiles by block ID or color, edit global flips &amp; corner offsets, preview the result in 3D, then export updated SNBT.</div>
     </div>
     <div class="row-inline" style="gap:8px">
+      <button id="controlsModalBtn" class="btn" style="white-space:nowrap">🎮 Controls</button>
       <a href="wiki.html" class="btn" style="text-decoration:none;white-space:nowrap">📖 Guide</a>
       <a href="https://github.com/McInteractive23/Littletiles-3D-Viewport-Editor" target="_blank" rel="noopener" class="btn" style="text-decoration:none;white-space:nowrap">📝 GitHub</a>
     </div>
   </div>
 </header>
+
+<div id="sessionBanner" class="row" style="display:none;justify-content:space-between;align-items:center;padding:10px 18px;background:#1a2140;border-bottom:1px solid var(--border)">
+  <span>A previous session was found in this browser.</span>
+  <div class="row-inline" style="gap:8px">
+    <button class="btn" id="sessionRestoreBtn">Restore</button>
+    <button class="btn" id="sessionDismissBtn">Discard</button>
+  </div>
+</div>
+
+<div id="controlsModalBackdrop" style="display:none;position:fixed;inset:0;background:rgba(5,6,14,.6);z-index:50;align-items:center;justify-content:center;padding:20px">
+  <div style="background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:20px 22px;max-width:460px;width:100%">
+    <div class="row" style="justify-content:space-between;align-items:center;margin-bottom:12px">
+      <h2 style="margin:0;font-size:16px">3D Viewport Controls</h2>
+      <button id="controlsModalClose" class="btn" style="padding:4px 10px">✕</button>
+    </div>
+    <table id="controlsModalTable" style="width:100%;font-size:14px;border-collapse:collapse"></table>
+    <div class="muted" style="margin-top:10px;font-size:12px">Only bound controls are listed here — anything not shown does nothing in the 3D view.</div>
+  </div>
+</div>
 
 <main>
   <div class="col col-left">
@@ -95,9 +130,79 @@
         <button class="btn" id="previewFitBtn">Reset View</button>
       </div>
     </div>
-    <div id="previewCanvas" class="preview-canvas"></div>
+    <div style="position:relative">
+      <div id="previewCanvas" class="preview-canvas"></div>
+
+      <div class="viewport-toolbar viewport-toolbar-transform">
+        <button class="vp-icon-btn" id="vpGizmoMove" title="Move gizmo — G (drag to reposition, snapped to whole units)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M2 12h20M12 2l-3 3M12 2l3 3M12 22l-3-3M12 22l3-3M2 12l3-3M2 12l3 3M22 12l-3-3M22 12l-3 3"/></svg>
+        </button>
+        <button class="vp-icon-btn" id="vpGizmoScale" title="Scale gizmo — S (drag to resize)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20l6-6M4 20v-5M4 20h5"/><path d="M20 4l-6 6M20 4v5M20 4h-5"/></svg>
+        </button>
+        <button class="vp-icon-btn" id="vpGizmoRotate" title="Rotate gizmo — R (snapped to 90°)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a8 8 0 1 1-2.34-5.66"/><path d="M20 4v5h-5"/></svg>
+        </button>
+      </div>
+
+      <div class="viewport-toolbar viewport-toolbar-shapes">
+        <button class="vp-icon-btn" id="vpShapeBox" title="Flatten (plain box)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9L12 3z"/><path d="M12 12v9M4 7.5l8 4.5 8-4.5"/></svg>
+        </button>
+        <button class="vp-icon-btn" id="vpShapeNorth" title="Slope North">
+          <svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M4 20h16L4 6v14z"/></svg>
+        </button>
+        <button class="vp-icon-btn" id="vpShapeEast" title="Slope East">
+          <svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M4 20h16L4 6v14z" transform="rotate(90 12 12)"/></svg>
+        </button>
+        <button class="vp-icon-btn" id="vpShapeSouth" title="Slope South">
+          <svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M4 20h16L4 6v14z" transform="rotate(180 12 12)"/></svg>
+        </button>
+        <button class="vp-icon-btn" id="vpShapeWest" title="Slope West">
+          <svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M4 20h16L4 6v14z" transform="rotate(270 12 12)"/></svg>
+        </button>
+      </div>
+
+      <div id="vpToast" class="vp-toast"></div>
+      <div id="vpMarquee" class="vp-marquee"></div>
+
+      <div class="viewport-toolbar viewport-toolbar-right">
+        <button class="vp-icon-btn" id="vpFocusBtn" title="Focus the selected boxes — F">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.5v4M12 17.5v4M2.5 12h4M17.5 12h4"/></svg>
+        </button>
+        <div class="vp-sep"></div>
+        <button class="vp-icon-btn" id="vpUndoBtn" title="Undo — Ctrl+Z">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg>
+        </button>
+        <button class="vp-icon-btn" id="vpRedoBtn" title="Redo — Ctrl+Y">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 14l5-5-5-5"/><path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13"/></svg>
+        </button>
+        <div class="vp-sep"></div>
+        <button class="vp-icon-btn" id="mirrorXBtn" title="Mirror across X (East ↔ West)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><g transform="rotate(0 11 11)"><path d="M11 2.5v17" stroke-dasharray="2 2.2"/><path d="M8 6 3 11l5 5z"/><path d="M14 6l5 5-5 5z"/></g><text x="23.5" y="23.5" text-anchor="end" font-size="10" font-weight="700" font-family="system-ui,sans-serif" fill="#ff6b6b" stroke="none">X</text></svg>
+        </button>
+        <button class="vp-icon-btn" id="mirrorYBtn" title="Mirror across Y (Up ↔ Down)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><g transform="rotate(90 11 11)"><path d="M11 2.5v17" stroke-dasharray="2 2.2"/><path d="M8 6 3 11l5 5z"/><path d="M14 6l5 5-5 5z"/></g><text x="23.5" y="23.5" text-anchor="end" font-size="10" font-weight="700" font-family="system-ui,sans-serif" fill="#5fe08a" stroke="none">Y</text></svg>
+        </button>
+        <button class="vp-icon-btn" id="mirrorZBtn" title="Mirror across Z (North ↔ South)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><g transform="rotate(45 11 11)"><path d="M11 2.5v17" stroke-dasharray="2 2.2"/><path d="M8 6 3 11l5 5z"/><path d="M14 6l5 5-5 5z"/></g><text x="23.5" y="23.5" text-anchor="end" font-size="10" font-weight="700" font-family="system-ui,sans-serif" fill="#6b9bff" stroke="none">Z</text></svg>
+        </button>
+        <div class="vp-sep"></div>
+        <button class="vp-icon-btn" id="copyShapeBtn" title="Copy selected boxes — Ctrl+C">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h8"/></svg>
+        </button>
+        <button class="vp-icon-btn" id="pasteShapeBtn" title="Paste copied boxes in place — Ctrl+V" disabled>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4h6v3H9z"/><path d="M15 5.5h2a2 2 0 0 1 2 2V19a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V7.5a2 2 0 0 1 2-2h2"/></svg>
+        </button>
+        <div class="vp-sep"></div>
+        <button class="vp-icon-btn" id="vpDeleteBtn" title="Delete selected boxes — Del">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16"/><path d="M9 7V4h6v3"/><path d="M6 7l1 13h10l1-13"/><path d="M10 11v5M14 11v5"/></svg>
+        </button>
+      </div>
+    </div>
     <div class="muted" style="margin-top:8px">
-      Drag to orbit, scroll to zoom, middle-click drag to pan. Each box is colored using its own color/alpha, and corner offsets bend
+      Left-click a box to select it (drag for a selection box, Shift-click to add more). Middle-click drag to orbit,
+      shift + middle-click drag to pan, scroll to zoom — see 🎮 Controls in the header for the full list and hotkeys. Each box is colored using its own color/alpha, and corner offsets bend
       the box the same way LittleTiles' transformable corners do. Flipping a face reverses its stored triangle
       winding (so the exported data is correct) but every face still renders solid here — nothing goes
       invisible in the preview. The floor grid is spaced to the selected Grid value, so each square is one
@@ -193,8 +298,34 @@
   </div>
 </main>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.186.1/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.186.1/examples/jsm/"
+  }
+}
+</script>
+<script type="module">
+  // The rest of this file (a plain classic <script>, not a module) expects
+  // a global THREE namespace with OrbitControls/TransformControls attached
+  // to it, matching how the old non-module CDN builds used to work. That
+  // old classic build (three@0.128.0/examples/js/...) doesn't have
+  // TransformControls' showE property at all — it's only in the current
+  // module-based build — so this loads the real, current one via proper
+  // ES imports and re-exposes it the same shape the rest of the app
+  // already expects, rather than rewriting everything below into modules.
+  import * as THREE_NS from 'three';
+  import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+  import { TransformControls } from 'three/addons/controls/TransformControls.js';
+  // Fat (multi-pixel) lines for the selected-box outline; plain WebGL lines are always 1px.
+  import { LineSegments2 } from 'three/addons/lines/LineSegments2.js';
+  import { LineMaterial } from 'three/addons/lines/LineMaterial.js';
+  import { LineSegmentsGeometry } from 'three/addons/lines/LineSegmentsGeometry.js';
+  // THREE_NS (a module namespace object) can't have properties added to it
+  // directly, so copy it into a plain, mutable object instead.
+  window.THREE = Object.assign({}, THREE_NS, { OrbitControls, TransformControls, LineSegments2, LineMaterial, LineSegmentsGeometry });
+</script>
 <script>
 /*
  * LittleTiles Selection Converter
@@ -224,6 +355,15 @@ const $$ = s => Array.from(document.querySelectorAll(s));
 
 let boxNodes = [];        // DOM node per box (state lives as properties on the node — see createBox)
 let activeBoxIndex = -1;  // index into boxNodes of whichever box the global Controls panel is editing
+// Everything currently selected. The active box above is the "primary" one
+// (the Controls panel shows it); the rest of the selection just comes along
+// for Delete / Copy / Mirror / shape presets and the transform gizmo.
+let selectedNodes = new Set();
+function selectedList() {
+  const list = boxNodes.filter(n => selectedNodes.has(n));
+  if (!list.length && boxNodes[activeBoxIndex]) return [boxNodes[activeBoxIndex]];
+  return list;
+}
 
 // ---- Low-level integer helpers -------------------------------------------
 // LittleTiles packs everything into Java ints, which are signed 32-bit, so
@@ -264,17 +404,19 @@ function rgbaFromPacked(p) {
  *  - packed: those shorts, squeezed two-per-int (hi 16 bits / lo 16 bits)
  *    because that's how LittleTiles stores them in the SNBT int array.
  */
-function buildIndicatorAndPacked() {
-  const corners = Array.from({ length: 8 }, () => [0, 0, 0]);
-  $$('input[data-corner]').forEach(inp => {
-    corners[Number(inp.dataset.corner)][Number(inp.dataset.axis)] = +inp.value || 0;
-  });
-
+/**
+ * Pure version of the corner/flip -> indicator/packed encoding, taking the
+ * corners array and flips object directly instead of reading the DOM. This
+ * is the single source of truth for the bit layout — buildIndicatorAndPacked()
+ * (below) just reads the Controls panel into these shapes and calls this,
+ * and Mirror/Rotate/Presets/Paste do the same after computing new corners/flips.
+ */
+function encodeCornersFlips(corners, flips) {
   let indicator = 0 >>> 0;
   const shorts = [];
   for (let i = 0; i < 8; i++) {
     for (let a = 0; a < 3; a++) {
-      const v = corners[i][a];
+      const v = (corners[i] && corners[i][a]) || 0;
       if (v !== 0) {
         indicator = (indicator | (1 << (i * 3 + a))) >>> 0;
         shorts.push(v);
@@ -282,11 +424,10 @@ function buildIndicatorAndPacked() {
     }
   }
   faceMap.forEach(f => {
-    const el = $('#' + f.id);
-    if (el && el.checked) indicator = (indicator | ((1 << f.bit) >>> 0)) >>> 0;
+    if (flips && flips[f.id]) indicator = (indicator | ((1 << f.bit) >>> 0)) >>> 0;
   });
 
-  const anyFlip = faceMap.some(f => { const el = $('#' + f.id); return el && el.checked; });
+  const anyFlip = faceMap.some(f => flips && flips[f.id]);
   const any = shorts.length > 0 || anyFlip;
   if (any) indicator = (indicator | TOP_MARKER) >>> 0;
 
@@ -298,6 +439,32 @@ function buildIndicatorAndPacked() {
   }
 
   return { any, indicatorSigned: toSigned32(indicator), indicatorUnsigned: indicator, shorts, packed };
+}
+
+/** Applies the encoded corners/flips/indicator data to a box node in place. */
+function applyEncodedShape(node, corners, flips) {
+  node._corners = corners;
+  node._flips = flips;
+  const enc = encodeCornersFlips(corners, flips);
+  if (enc.any) {
+    node._importIndicator = enc.indicatorSigned;
+    node._importUnsigned = enc.indicatorUnsigned;
+    node._importShorts = enc.shorts.slice();
+    node._importPacked = enc.packed.slice();
+  } else {
+    delete node._importIndicator; delete node._importUnsigned;
+    delete node._importPacked; delete node._importShorts;
+  }
+}
+
+function buildIndicatorAndPacked() {
+  const corners = Array.from({ length: 8 }, () => [0, 0, 0]);
+  $$('input[data-corner]').forEach(inp => {
+    corners[Number(inp.dataset.corner)][Number(inp.dataset.axis)] = +inp.value || 0;
+  });
+  const flips = {};
+  faceMap.forEach(f => { const el = $('#' + f.id); flips[f.id] = !!(el && el.checked); });
+  return encodeCornersFlips(corners, flips);
 }
 
 function updatePackedColor(wrapper) {
@@ -339,7 +506,198 @@ function applyControlsToActiveBox() {
   rebuildGroups();
 }
 
-// ---- Box panel (one collapsible card per tile box) -----------------------
+function emptyCorners() { return Array.from({ length: 8 }, () => [0, 0, 0]); }
+
+/**
+ * Mirror/rotate the active box's shape (corner offsets + face flips) in
+ * place — the box's own min/max stays put, only the offset pattern moves.
+ * Corner order: 0 E-U-N, 1 E-U-S, 2 E-D-N, 3 E-D-S, 4 W-U-N, 5 W-U-S, 6 W-D-N, 7 W-D-S.
+ * Mappings verified separately (4x rotation / 2x mirror both return to identity).
+ */
+const MIRROR_MAP = {
+  x: { pairs: [[0, 4], [1, 5], [2, 6], [3, 7]], axis: 0, flipSwap: ['flipEast', 'flipWest'] },
+  y: { pairs: [[0, 2], [1, 3], [4, 6], [5, 7]], axis: 1, flipSwap: ['flipUp', 'flipDown'] },
+  z: { pairs: [[0, 1], [2, 3], [4, 5], [6, 7]], axis: 2, flipSwap: ['flipNorth', 'flipSouth'] },
+};
+// 90°-about-Y rotation: East(+X)->South(+Z)->West(-X)->North(-Z)->East.
+const ROTATE_Y_DEST = [1, 5, 3, 7, 0, 4, 2, 6];
+
+function mirrorNode(node, axisKey) {
+  const corners = node._corners || emptyCorners();
+  const map = MIRROR_MAP[axisKey];
+  const newCorners = emptyCorners();
+  map.pairs.forEach(([a, b]) => {
+    const ca = (corners[a] || [0, 0, 0]).slice(), cb = (corners[b] || [0, 0, 0]).slice();
+    ca[map.axis] = -(ca[map.axis] || 0); cb[map.axis] = -(cb[map.axis] || 0);
+    newCorners[b] = ca; newCorners[a] = cb;
+  });
+  const flips = node._flips || {};
+  const newFlips = { ...flips };
+  const [fa, fb] = map.flipSwap;
+  newFlips[fa] = !!flips[fb]; newFlips[fb] = !!flips[fa];
+  applyEncodedShape(node, newCorners, newFlips);
+  finishShapeEdit(node);
+}
+// Mirrors each selected box's own shape (as before, but for the whole selection).
+function mirrorSelectedBoxes(axisKey) { selectedList().forEach(n => mirrorNode(n, axisKey)); }
+
+/**
+ * Rotates the active box by a whole-number rotation matrix R (any mix of 90°
+ * turns around X, Y and Z), pivoting on the box's center — the same point the
+ * 3D rotate gizmo turns around. R is a 3x3 array of -1/0/1 where v' = R * v,
+ * in the preview's axes: +X = East, +Y = Up, +Z = South.
+ *
+ * What moves with the rotation:
+ *  - each corner offset: the corner slot it sits in is rotated, and so is the
+ *    offset vector itself,
+ *  - each face flip: the flag follows its face to wherever that face ends up,
+ *  - the box's size: axes get permuted (e.g. a 90° turn around X swaps
+ *    sizeY and sizeZ) and min is recentered so the center stays put.
+ *
+ * If a swapped pair of sizes differs by an odd number, the exact center can't
+ * be kept in whole units (LittleTiles coordinates are integers), so min lands
+ * half a unit toward the negative side on that axis instead.
+ */
+const CORNER_SIGNS = Array.from({ length: 8 }, (_, i) => [i < 4 ? 1 : -1, (i % 4) < 2 ? 1 : -1, i % 2 === 0 ? -1 : 1]);
+// Inverse of CORNER_SIGNS: sign vector -> corner index (0 E-U-N ... 7 W-D-S).
+function cornerIndexFromSigns(v) { return (v[0] > 0 ? 0 : 4) + (v[1] > 0 ? 0 : 2) + (v[2] < 0 ? 0 : 1); }
+const FACE_NORMALS = {
+  flipEast: [1, 0, 0], flipWest: [-1, 0, 0], flipUp: [0, 1, 0],
+  flipDown: [0, -1, 0], flipSouth: [0, 0, 1], flipNorth: [0, 0, -1],
+};
+function faceNameFromNormal(n) {
+  return Object.keys(FACE_NORMALS).find(k => FACE_NORMALS[k][0] === n[0] && FACE_NORMALS[k][1] === n[1] && FACE_NORMALS[k][2] === n[2]);
+}
+function mulMat3Vec(R, v) {
+  return [0, 1, 2].map(r => R[r][0] * v[0] + R[r][1] * v[1] + R[r][2] * v[2]);
+}
+
+/**
+ * Rotates one box's shape and size by R. With no `pivot` the box turns around
+ * its own center (see the note above). With an integer `pivot` ([x,y,z], world
+ * units) the whole box is carried around that point instead — used when
+ * several boxes are rotated as one group, where each box has to move with the
+ * group rather than spin in place. An integer pivot keeps every coordinate a
+ * whole number.
+ */
+function applyRotationToNode(node, R, pivot) {
+  const corners = node._corners || emptyCorners();
+  const newCorners = emptyCorners();
+  for (let i = 0; i < 8; i++) {
+    const dest = cornerIndexFromSigns(mulMat3Vec(R, CORNER_SIGNS[i]));
+    newCorners[dest] = mulMat3Vec(R, corners[i] || [0, 0, 0]);
+  }
+  const flips = node._flips || {};
+  const newFlips = { flipEast: false, flipWest: false, flipUp: false, flipDown: false, flipSouth: false, flipNorth: false };
+  Object.keys(FACE_NORMALS).forEach(name => {
+    newFlips[faceNameFromNormal(mulMat3Vec(R, FACE_NORMALS[name]))] = !!flips[name];
+  });
+  applyEncodedShape(node, newCorners, newFlips);
+
+  const axes = ['X', 'Y', 'Z'];
+  const minEls = axes.map(a => node.querySelector('.min' + a));
+  const sizeEls = axes.map(a => node.querySelector('.size' + a));
+  if (!(minEls.every(Boolean) && sizeEls.every(Boolean))) return;
+  const mn = minEls.map(el => +el.value || 0);
+  const sz = sizeEls.map(el => +el.value || 0);
+  if (pivot) {
+    // Rotate the box's two opposite corners around the pivot; they become the new min/max.
+    const rot = (v) => mulMat3Vec(R, v.map((c, i) => c - pivot[i])).map((c, i) => c + pivot[i]);
+    const a = rot(mn), c = rot(mn.map((v, i) => v + sz[i]));
+    for (let i = 0; i < 3; i++) {
+      const lo = Math.min(a[i], c[i]);
+      minEls[i].value = lo;
+      sizeEls[i].value = Math.max(a[i], c[i]) - lo;
+    }
+    return;
+  }
+  for (let r = 0; r < 3; r++) {
+    const newSize = Math.abs(R[r][0]) * sz[0] + Math.abs(R[r][1]) * sz[1] + Math.abs(R[r][2]) * sz[2];
+    minEls[r].value = mn[r] + Math.floor((sz[r] - newSize) / 2);
+    sizeEls[r].value = newSize;
+  }
+}
+
+function rotateActiveBoxByMatrix(R) {
+  const node = boxNodes[activeBoxIndex]; if (!node) return;
+  applyRotationToNode(node, R, null);
+  finishShapeEdit(node);
+}
+
+/**
+ * Y-only convenience wrapper. `steps` follows the gizmo's direction: positive
+ * = counter-clockwise seen from above, i.e. East(+X) -> North(-Z).
+ */
+function rotateActiveBoxY(steps = 1) {
+  const k = ((steps % 4) + 4) % 4;
+  if (k === 0) return;
+  const c = Math.round(Math.cos(k * Math.PI / 2)), sn = Math.round(Math.sin(k * Math.PI / 2));
+  rotateActiveBoxByMatrix([[c, 0, sn], [0, 1, 0], [-sn, 0, c]]);
+}
+
+// Common shapes at the box's current size, so the offset magnitudes always
+// scale correctly rather than being hardcoded numbers.
+function applyPresetShape(preset) { selectedList().forEach(n => applyPresetShapeToNode(n, preset)); }
+function applyPresetShapeToNode(node, preset) {
+  const sizeY = +(node.querySelector('.sizeY').value) || 0;
+  const newCorners = emptyCorners();
+  if (preset !== 'flatten') {
+    // Corner indices per side: North={0,2,4,6} South={1,3,5,7} East={0,1,2,3} West={4,5,6,7}
+    const sideTops = { north: [0, 4], south: [1, 5], east: [0, 1], west: [4, 5] };
+    (sideTops[preset] || []).forEach(i => { newCorners[i] = [0, -sizeY, 0]; });
+  }
+  applyEncodedShape(node, newCorners, node._flips || {});
+  finishShapeEdit(node);
+}
+
+// Copy/paste whole boxes: size, block ID, color/alpha and shape (corner
+// offsets + face flips). Paste drops the copies in exactly the position they
+// were copied from, and selects them so they can be moved straight away.
+let boxClipboard = null; // array of box snapshots
+function copySelected() {
+  const nodes = selectedList();
+  if (!nodes.length) { vpToast('Select a box first'); return; }
+  boxClipboard = nodes.map(snapshotBox);
+  updateClipboardButtons();
+  vpToast(nodes.length === 1 ? 'Copied Box ' + (boxNodes.indexOf(nodes[0]) + 1) : 'Copied ' + nodes.length + ' boxes');
+  setStatus('Copied');
+}
+function pasteBoxes() {
+  if (!boxClipboard || !boxClipboard.length) { vpToast('Nothing copied yet'); return; }
+  const added = boxClipboard.map(entry => {
+    addBox(JSON.parse(JSON.stringify(entry))); // adds the box (and briefly selects it)
+    return boxNodes[boxNodes.length - 1];
+  });
+  setSelection(added, added[added.length - 1]);
+  vpToast(added.length === 1 ? 'Pasted 1 box' : 'Pasted ' + added.length + ' boxes');
+  setStatus('Pasted');
+}
+function deleteSelectedBoxes() {
+  const nodes = selectedList();
+  if (!nodes.length) { vpToast('Select a box first'); return; }
+  nodes.forEach(n => n.remove());
+  boxNodes = boxNodes.filter(n => !nodes.includes(n));
+  boxNodes.forEach((n, i) => {
+    n.dataset.idx = i;
+    n.querySelector('.collapsible-header .box-label').textContent = 'Box ' + (i + 1);
+  });
+  activeBoxIndex = -1;
+  selectedNodes = new Set();
+  try { Preview.syncSelection(); } catch (e) { /* ignore */ }
+  rebuildGroups();
+  render();
+  vpToast(nodes.length === 1 ? 'Deleted 1 box' : 'Deleted ' + nodes.length + ' boxes');
+  setStatus('Deleted');
+}
+
+/** Shared refresh after any function mutates a box's shape directly (not via the Controls panel inputs). */
+function finishShapeEdit(node) {
+  if (boxNodes[activeBoxIndex] === node) openBox(node, true); // repopulate Controls panel + Result readout (keeps the selection)
+  rebuildGroups();
+  render();
+}
+
+
 
 function createBox(index, data) {
   const wrapper = document.createElement('div');
@@ -356,7 +714,7 @@ function createBox(index, data) {
 
   const header = document.createElement('div');
   header.className = 'collapsible-header';
-  header.innerHTML = `<div>Box ${index + 1}</div><div>[+]</div>`;
+  header.innerHTML = `<div><span class="box-label">Box ${index + 1}</span></div><div>[+]</div>`;
   wrapper.appendChild(header);
 
   const content = document.createElement('div');
@@ -375,9 +733,6 @@ function createBox(index, data) {
       <input type="text" class="blockId" value="${data && data.blockId ? data.blockId : ''}">
     </div>
     <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px">
-      <div style="flex:0 0 auto">
-        <button class="btn remove">Remove</button>
-      </div>
       <div style="display:flex;align-items:flex-end;gap:8px">
         <div style="display:flex;flex-direction:column;align-items:center">
           <label style="font-size:12px;margin-bottom:4px">Color</label>
@@ -447,26 +802,12 @@ function createBox(index, data) {
     });
   });
 
-  content.querySelector('.remove').addEventListener('click', () => {
-    const idx = Number(wrapper.dataset.idx);
-    wrapper.remove();
-    boxNodes.splice(idx, 1);
-    boxNodes.forEach((n, i) => {
-      n.dataset.idx = i;
-      n.querySelector('.collapsible-header div:first-child').textContent = 'Box ' + (i + 1);
-    });
-    activeBoxIndex = Math.max(-1, Math.min(activeBoxIndex, boxNodes.length - 1));
-    if (boxNodes[activeBoxIndex]) openBox(boxNodes[activeBoxIndex]);
-    rebuildGroups();
-    render();
-  });
-
   const cb = content.querySelector('.color-box');
   if (cb) cb.style.background = rgbaFromPacked(wrapper._colorPacked);
   return wrapper;
 }
 
-function openBox(wrapper) {
+function openBox(wrapper, keepSelection) {
   $$('#boxesContainer .collapsible-content').forEach(c => c.classList.remove('open'));
   $$('#boxesContainer .collapsible-header').forEach(h => h.classList.remove('active'));
   $$('#boxesContainer .boxpanel').forEach(p => p.classList.remove('selected'));
@@ -477,6 +818,7 @@ function openBox(wrapper) {
   wrapper.querySelector('.collapsible-header div:last-child').textContent = '[-]';
   wrapper.classList.add('selected');
   activeBoxIndex = Number(wrapper.dataset.idx);
+  if (keepSelection) selectedNodes.add(wrapper); else selectedNodes = new Set([wrapper]);
 
   const b = wrapper;
   faceMap.forEach(f => { const el = $('#' + f.id); if (el) el.checked = !!(b._flips && b._flips[f.id]); });
@@ -501,6 +843,40 @@ function openBox(wrapper) {
     $('#indicatorOut').value = ''; $('#bitListOut').value = ''; $('#shortsOut').value = ''; $('#packedOut').value = '';
     $('#fullArrayOut').value = JSON.stringify([minX, minY, minZ, maxX, maxY, maxZ]);
   }
+  // Selection changed (from the list, the Controls panel or a 3D click): move the outline/gizmo.
+  try { Preview.syncSelection(); } catch (e) { /* Preview not ready yet */ }
+}
+
+// Select exactly these boxes; `primary` is the one the Controls panel shows.
+function setSelection(nodes, primary) {
+  nodes = nodes.filter(n => boxNodes.includes(n));
+  if (!nodes.length) { deselectBox(); return; }
+  const prim = nodes.includes(primary) ? primary : nodes[nodes.length - 1];
+  selectedNodes = new Set(nodes);
+  openBox(prim, true);
+}
+// Shift/Ctrl-click: add the box to the selection, or take it out again.
+function toggleBoxSelection(node) {
+  if (!selectedNodes.has(node)) { openBox(node, true); return; }
+  selectedNodes.delete(node);
+  const rest = selectedList();
+  if (!rest.length) deselectBox();
+  else if (boxNodes[activeBoxIndex] === node) openBox(rest[rest.length - 1], true);
+  else Preview.syncSelection();
+}
+// A plain or modified left-click in the 3D view; `node` is the box hit, or null for empty space.
+function viewportClickSelect(node, additive) {
+  if (!node) { if (!additive && (activeBoxIndex >= 0 || selectedNodes.size)) deselectBox(); return; }
+  if (additive) toggleBoxSelection(node);
+  else if (!(selectedNodes.size === 1 && selectedNodes.has(node))) openBox(node);
+}
+// Clicking empty space in the 3D view: nothing selected, no outline.
+function deselectBox() {
+  activeBoxIndex = -1;
+  selectedNodes = new Set();
+  $$('#boxesContainer .boxpanel').forEach(p => p.classList.remove('selected'));
+  try { Preview.syncSelection(); } catch (e) { /* ignore */ }
+  render(); // clears the Result readout for "no box open"
 }
 
 function addBox(data) {
@@ -604,6 +980,7 @@ function buildSNBT() {
 function render() {
   $('#snbtOut').value = buildSNBT();
   Preview.update();
+  scheduleStateSettled();
 
   if (activeBoxIndex < 0 || !boxNodes[activeBoxIndex]) {
     $('#fullArrayOut').value = ''; $('#indicatorOut').value = ''; $('#bitListOut').value = '';
@@ -684,6 +1061,23 @@ function extractSelectionFromText(raw) {
   return { grid: gridMatch ? +gridMatch[1] : 0, entries };
 }
 
+function applyShapeToGroup(idxs) {
+  if (!idxs || !idxs.length) return;
+  const corners = Array.from({ length: 8 }, () => [0, 0, 0]);
+  $$('input[data-corner]').forEach(inp => {
+    corners[Number(inp.dataset.corner)][Number(inp.dataset.axis)] = +inp.value || 0;
+  });
+  const flips = {};
+  faceMap.forEach(f => { const el = $('#' + f.id); flips[f.id] = !!(el && el.checked); });
+  idxs.forEach(i => {
+    const node = boxNodes[i]; if (!node) return;
+    applyEncodedShape(node, corners.map(c => c.slice()), { ...flips });
+  });
+  rebuildGroups();
+  render();
+  setStatus(`Applied shape to ${idxs.length} box(es)`);
+}
+
 function rebuildGroups() {
   const texMap = new Map(), colMap = new Map();
   boxNodes.forEach((p, i) => {
@@ -732,6 +1126,13 @@ function rebuildGroups() {
     });
     sel.addEventListener('change', () => { const idx = Number(sel.value); if (!isNaN(idx)) openBox(boxNodes[idx]); });
     g.appendChild(sel);
+
+    const applyShapeBtn = document.createElement('button');
+    applyShapeBtn.className = 'btn'; applyShapeBtn.textContent = 'Apply Shape';
+    applyShapeBtn.title = 'Apply the current Corner Offsets/Flipped Faces panel to every box in this group';
+    applyShapeBtn.addEventListener('click', () => applyShapeToGroup(idxs));
+    g.appendChild(applyShapeBtn);
+
     tb.appendChild(g);
   }
 
@@ -815,6 +1216,12 @@ function rebuildGroups() {
     });
     sel.addEventListener('change', () => { const idx = Number(sel.value); if (!isNaN(idx)) openBox(boxNodes[idx]); });
     g.appendChild(sel);
+
+    const applyShapeBtnC = document.createElement('button');
+    applyShapeBtnC.className = 'btn'; applyShapeBtnC.textContent = 'Apply Shape';
+    applyShapeBtnC.title = 'Apply the current Corner Offsets/Flipped Faces panel to every box in this group';
+    applyShapeBtnC.addEventListener('click', () => applyShapeToGroup(idxs));
+    g.appendChild(applyShapeBtnC);
 
     cb.appendChild(g);
   }
@@ -901,6 +1308,132 @@ function importSelection(raw) {
 
 function setStatus(s) { const el = $('#status'); if (el) el.textContent = 'Status: ' + s; }
 
+// Short message inside the 3D viewport, for the toolbar buttons whose result
+// isn't otherwise visible (Copy in particular).
+let vpToastTimer = null;
+function vpToast(msg) {
+  const el = $('#vpToast'); if (!el) return;
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(vpToastTimer);
+  vpToastTimer = setTimeout(() => el.classList.remove('show'), 1600);
+}
+function updateClipboardButtons() { const p = $('#pasteShapeBtn'); if (p) p.disabled = !(boxClipboard && boxClipboard.length); }
+
+// ---------------------------------------------------------------------------
+// Snapshot / restore — shared by Undo/Redo and the localStorage session save.
+// A snapshot is plain JSON: the grid value plus one entry per box, in exactly
+// the shape createBox()/importSelection() already know how to consume.
+// ---------------------------------------------------------------------------
+// One box's state in the plain-JSON shape createBox() consumes — shared by
+// snapshotState() (undo / session save) and Copy Box.
+function snapshotBox(node) {
+  const b = readBoxData(node);
+  const entry = {
+    minX: b.minX, minY: b.minY, minZ: b.minZ, maxX: b.maxX, maxY: b.maxY, maxZ: b.maxZ,
+    blockId: b.blockId,
+    _colorHex: node._colorHex, _alpha: node._alpha, _colorPacked: node._colorPacked,
+    _corners: (node._corners || emptyCorners()).map(c => c.slice()),
+    _flips: { ...(node._flips || {}) },
+  };
+  if (node._importIndicator !== undefined) {
+    entry._indicatorSigned = node._importIndicator;
+    entry._indicatorUnsigned = node._importUnsigned;
+    entry._packed = (node._importPacked || []).slice();
+    entry._shorts = (node._importShorts || []).slice();
+  }
+  return entry;
+}
+function snapshotState() {
+  return {
+    grid: getGridValue(),
+    boxes: boxNodes.map(snapshotBox),
+  };
+}
+
+let isRestoringState = false;
+function restoreState(snap) {
+  if (!snap) return;
+  isRestoringState = true;
+  boxNodes = [];
+  $('#boxesContainer').innerHTML = '';
+  setGridValue(snap.grid || 16);
+  (snap.boxes || []).forEach((entry, i) => {
+    const node = createBox(i, entry);
+    boxNodes.push(node);
+    $('#boxesContainer').appendChild(node);
+  });
+  activeBoxIndex = -1;
+  if (boxNodes[0]) openBox(boxNodes[0]);
+  rebuildGroups();
+  render();
+  isRestoringState = false;
+}
+
+// ---- Undo / redo ----------------------------------------------------------
+let historyStack = [];
+let historyIndex = -1;
+let historyTimer = null;
+
+function updateUndoRedoButtons() {
+  const u = $('#vpUndoBtn'), r = $('#vpRedoBtn');
+  if (u) u.disabled = historyIndex <= 0;
+  if (r) r.disabled = historyIndex >= historyStack.length - 1;
+}
+function pushHistoryNow() {
+  if (isRestoringState) return;
+  const snap = snapshotState();
+  historyStack = historyStack.slice(0, historyIndex + 1);
+  historyStack.push(snap);
+  const MAX_HISTORY = 50;
+  if (historyStack.length > MAX_HISTORY) historyStack.shift();
+  historyIndex = historyStack.length - 1;
+  updateUndoRedoButtons();
+}
+function undo() {
+  if (historyIndex <= 0) return;
+  historyIndex--;
+  restoreState(historyStack[historyIndex]);
+  updateUndoRedoButtons();
+  setStatus('Undo');
+}
+function redo() {
+  if (historyIndex >= historyStack.length - 1) return;
+  historyIndex++;
+  restoreState(historyStack[historyIndex]);
+  updateUndoRedoButtons();
+  setStatus('Redo');
+}
+
+// ---- Session auto-save (localStorage) --------------------------------------
+const SESSION_KEY = 'littletiles-converter-session-v1';
+function saveSessionToStorage() {
+  if (isRestoringState) return;
+  try { localStorage.setItem(SESSION_KEY, JSON.stringify(snapshotState())); }
+  catch (e) { /* storage unavailable or full — session save is best-effort */ }
+}
+function loadSavedSession() {
+  try {
+    const raw = localStorage.getItem(SESSION_KEY);
+    if (!raw) return null;
+    const data = JSON.parse(raw);
+    return (data && data.boxes && data.boxes.length) ? data : null;
+  } catch (e) { return null; }
+}
+function clearSavedSession() {
+  try { localStorage.removeItem(SESSION_KEY); } catch (e) { /* ignore */ }
+}
+
+// Both history and the session save happen on the same debounced "state
+// settled" signal, called from render() — so typing a number only creates
+// one undo step and one save once you pause, not one per keystroke.
+function scheduleStateSettled() {
+  if (isRestoringState) return;
+  clearTimeout(historyTimer);
+  historyTimer = setTimeout(() => { pushHistoryNow(); saveSessionToStorage(); }, 500);
+}
+
+
 // Grid is one of the mod's fixed resolution steps (2,4,8,16...); if an
 // imported selection carries something outside that list, add it as a
 // one-off option instead of silently dropping the value.
@@ -982,6 +1515,13 @@ const Preview = (() => {
   let container = null, initialized = false;
   let viewMode = 'solid'; // 'solid' | 'solidwire' | 'wire'
 
+  // Gizmo state. A gizmo attaches to the *currently open* box's mesh; while
+  // it's being dragged we must not rebuild meshes (that would yank the
+  // object out from under TransformControls mid-drag), so isDraggingGizmo
+  // gates Preview.update()/fit()/setMode() below.
+  let gizmo, gizmoHelper, gizmoMode = null, gizmoNode = null, isDraggingGizmo = false;
+  let nodeToGroup = new Map();
+
   // Each face: which 4 corner indices form its quad (already in outward CCW
   // order — see cornerBasePositions below), and which global flip flag it
   // corresponds to.
@@ -994,16 +1534,37 @@ const Preview = (() => {
     { q: [0, 2, 6, 4], flip: 'flipNorth' }, // -Z
   ];
 
+  // Absolute-world corner positions — used by fit() for camera framing.
   function cornerBasePositions(b) {
     const { minX, minY, minZ, maxX, maxY, maxZ } = b;
     return [
-      [maxX, maxY, minZ], [maxX, maxY, maxZ], [maxX, minY, minZ], [maxX, minY, maxZ], // East  Up/Down x North/South
-      [minX, maxY, minZ], [minX, maxY, maxZ], [minX, minY, minZ], [minX, minY, maxZ], // West  Up/Down x North/South
+      [maxX, maxY, minZ], [maxX, maxY, maxZ], [maxX, minY, minZ], [maxX, minY, maxZ],
+      [minX, maxY, minZ], [minX, maxY, maxZ], [minX, minY, minZ], [minX, minY, maxZ],
     ];
   }
-
   function offsetCorners(b, corners) {
     const base = cornerBasePositions(b);
+    return base.map((p, i) => {
+      const off = (corners && corners[i]) || [0, 0, 0];
+      return [p[0] + (off[0] || 0), p[1] + (off[1] || 0), p[2] + (off[2] || 0)];
+    });
+  }
+
+  // Local (centered-at-origin) corner positions — used for mesh geometry, so
+  // a box's Group.position is its CENTER. That's what puts the gizmo in the
+  // middle of the box instead of at a corner. Translate/scale read back as
+  // a delta from where the drag started (see commitGizmo) rather than the
+  // absolute center, since a center isn't always a whole number (odd-sized
+  // boxes have a half-unit center) even though min/size always are.
+  function cornerBasePositionsLocal(sizeX, sizeY, sizeZ) {
+    const hx = sizeX / 2, hy = sizeY / 2, hz = sizeZ / 2;
+    return [
+      [hx, hy, -hz], [hx, hy, hz], [hx, -hy, -hz], [hx, -hy, hz],
+      [-hx, hy, -hz], [-hx, hy, hz], [-hx, -hy, -hz], [-hx, -hy, hz],
+    ];
+  }
+  function offsetCornersLocal(sizeX, sizeY, sizeZ, corners) {
+    const base = cornerBasePositionsLocal(sizeX, sizeY, sizeZ);
     return base.map((p, i) => {
       const off = (corners && corners[i]) || [0, 0, 0];
       return [p[0] + (off[0] || 0), p[1] + (off[1] || 0), p[2] + (off[2] || 0)];
@@ -1025,12 +1586,7 @@ const Preview = (() => {
     return geo;
   }
 
-  // Darkens a color for solid+wire edge lines (readable against any face color).
-  function edgeColorSolidWire(hexInt) {
-    return new THREE.Color(hexInt).multiplyScalar(0.35);
-  }
-  // For wireframe-only mode, use the box's own color but keep it visible
-  // against the near-black scene background.
+  function edgeColorSolidWire(hexInt) { return new THREE.Color(hexInt).multiplyScalar(0.35); }
   function edgeColorWireOnly(hexInt) {
     const c = new THREE.Color(hexInt);
     const lum = 0.2126 * c.r + 0.7152 * c.g + 0.0722 * c.b;
@@ -1038,17 +1594,12 @@ const Preview = (() => {
     return c;
   }
 
-  function buildBoxVisual(node) {
-    const b = readBoxData(node);
-    const corners = node._corners || Array.from({ length: 8 }, () => [0, 0, 0]);
-    const flips = node._flips || {};
+  function addBoxMeshChildren(group, sizeX, sizeY, sizeZ, corners, flips, node) {
     const colorPacked = (node._colorPacked !== undefined) ? (node._colorPacked >>> 0) : 0xffffffff;
     const rgb = colorPacked & 0xFFFFFF;
     const alpha = (node._colorPacked !== undefined) ? (((colorPacked >>> 24) & 0xFF) / 255) : 1;
-
-    const pts = offsetCorners(b, corners);
+    const pts = offsetCornersLocal(sizeX, sizeY, sizeZ, corners);
     const geo = buildSolidGeometry(pts, flips);
-    const group = new THREE.Group();
 
     if (viewMode !== 'wire') {
       const mat = new THREE.MeshStandardMaterial({
@@ -1056,7 +1607,15 @@ const Preview = (() => {
         transparent: alpha < 1, opacity: Math.max(0.05, alpha),
         polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1,
       });
-      group.add(new THREE.Mesh(geo, mat));
+      const solid = new THREE.Mesh(geo, mat);
+      solid.userData.pick = true; // what a left-click can hit
+      group.add(solid);
+    } else {
+      // Wireframe view draws no faces, so add an invisible one purely so the
+      // box can still be clicked.
+      const pickMesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ visible: false, side: THREE.DoubleSide }));
+      pickMesh.userData.pick = true;
+      group.add(pickMesh);
     }
     if (viewMode !== 'solid') {
       const wireGeo = new THREE.WireframeGeometry(geo);
@@ -1064,22 +1623,369 @@ const Preview = (() => {
       const wireMat = new THREE.LineBasicMaterial({ color: wireColor, transparent: true, opacity: viewMode === 'wire' ? 0.9 : 0.6 });
       group.add(new THREE.LineSegments(wireGeo, wireMat));
     }
+    if (selectedNodes.has(node)) addSelectionOutline(group, pts);
+  }
+
+  // The 12 edges of a box, as pairs of corner indices (0-3 East, 4-7 West).
+  const BOX_EDGES = [[0, 1], [1, 3], [3, 2], [2, 0], [4, 5], [5, 7], [7, 6], [6, 4], [0, 4], [1, 5], [2, 6], [3, 7]];
+  const OUTLINE_COLOR = 0xff9f1c;
+  // Outline of the selected box, drawn along its real (corner-offset) edges so
+  // slopes and wedges get a correct outline too. Two copies: a solid one that
+  // hides behind other boxes, and a faint one that always shows through.
+  function addSelectionOutline(group, pts) {
+    const verts = [];
+    BOX_EDGES.forEach(([a, b]) => verts.push(pts[a][0], pts[a][1], pts[a][2], pts[b][0], pts[b][1], pts[b][2]));
+    const w = (container && container.clientWidth) || 400, h = (container && container.clientHeight) || 360;
+    const make = (opts) => {
+      let line;
+      if (typeof THREE.LineSegments2 === 'function') {
+        const g = new THREE.LineSegmentsGeometry();
+        g.setPositions(verts);
+        const m = new THREE.LineMaterial({ color: OUTLINE_COLOR, linewidth: 3, transparent: opts.opacity < 1, opacity: opts.opacity, depthTest: opts.depthTest, depthWrite: false });
+        m.resolution.set(w, h);
+        line = new THREE.LineSegments2(g, m);
+      } else { // fat-line addons unavailable: fall back to 1px lines
+        const g = new THREE.BufferGeometry();
+        g.setAttribute('position', new THREE.Float32BufferAttribute(verts, 3));
+        line = new THREE.LineSegments(g, new THREE.LineBasicMaterial({ color: OUTLINE_COLOR, transparent: opts.opacity < 1, opacity: opts.opacity, depthTest: opts.depthTest }));
+      }
+      line.userData.outline = true;
+      line.renderOrder = opts.depthTest ? 10 : 9;
+      group.add(line);
+    };
+    make({ depthTest: false, opacity: 0.3 });
+    make({ depthTest: true, opacity: 1 });
+  }
+  function removeSelectionOutline(group) {
+    for (let i = group.children.length - 1; i >= 0; i--) {
+      const c = group.children[i];
+      if (c.userData.outline) { group.remove(c); c.geometry.dispose(); c.material.dispose(); }
+    }
+  }
+  // Cheap refresh for when only the selection changed (no full rebuild):
+  // outlines every selected box and points the gizmo at the selection.
+  function syncSelection() {
+    if (!initialized) return;
+    meshGroup.children.forEach(removeSelectionOutline);
+    boxNodes.forEach(n => n.classList.toggle('selected', selectedNodes.has(n)));
+    const nodes = selectedList();
+    nodes.forEach(node => {
+      const g = nodeToGroup.get(node);
+      if (!g) return; // not built yet; the rebuild that follows adds its outline
+      const b = readBoxData(node);
+      addSelectionOutline(g, offsetCornersLocal(b.maxX - b.minX, b.maxY - b.minY, b.maxZ - b.minZ, node._corners));
+    });
+    if (isDraggingGizmo || !gizmoMode) return;
+    if (!nodes.length) detachGizmo(); else placeGizmo();
+  }
+
+  function clearGroupChildren(group) {
+    while (group.children.length) {
+      const c = group.children[0];
+      group.remove(c);
+      c.geometry.dispose(); c.material.dispose();
+    }
+  }
+
+  function buildBoxVisual(node) {
+    const b = readBoxData(node);
+    const sizeX = b.maxX - b.minX, sizeY = b.maxY - b.minY, sizeZ = b.maxZ - b.minZ;
+    const corners = node._corners || Array.from({ length: 8 }, () => [0, 0, 0]);
+    const flips = node._flips || {};
+    const group = new THREE.Group();
+    group.userData.node = node; // lets a click on any of its meshes find the box
+    group.position.set(b.minX + sizeX / 2, b.minY + sizeY / 2, b.minZ + sizeZ / 2);
+    addBoxMeshChildren(group, sizeX, sizeY, sizeZ, corners, flips, node);
     return group;
   }
 
-  function currentGridValue() {
-    return Math.max(1, getGridValue());
-  }
+  function currentGridValue() { return Math.max(1, getGridValue()); }
 
   function rebuildFloorGrid() {
-    if (floorGrid) {
-      scene.remove(floorGrid);
-      floorGrid.geometry.dispose(); floorGrid.material.dispose();
-    }
-    const blocksSpan = 16; // draw a 16x16-block floor, regardless of grid resolution
+    if (floorGrid) { scene.remove(floorGrid); floorGrid.geometry.dispose(); floorGrid.material.dispose(); }
+    const blocksSpan = 16;
     const cell = currentGridValue();
     floorGrid = new THREE.GridHelper(blocksSpan * cell, blocksSpan, 0x3a4070, 0x232847);
     scene.add(floorGrid);
+  }
+
+  const GIZMO_BTN_IDS = { translate: 'vpGizmoMove', scale: 'vpGizmoScale', rotate: 'vpGizmoRotate' };
+  function setGizmoButtonStates() {
+    Object.values(GIZMO_BTN_IDS).forEach(id => { const el = document.getElementById(id); if (el) el.classList.remove('active'); });
+    if (gizmoMode) { const el = document.getElementById(GIZMO_BTN_IDS[gizmoMode]); if (el) el.classList.add('active'); }
+  }
+  let dragStartData = null; // box state captured the moment a drag begins
+  let multiProxy = null;    // what the gizmo drags when several boxes are selected (move / rotate)
+  let multiStart = null;    // selection snapshot captured at drag start when several boxes are selected
+  let scaleProxy = null;    // invisible stand-in TransformControls scales instead of the box itself — see attachGizmo
+
+  function detachGizmo() {
+    if (gizmo) { gizmo.detach(); gizmo.enabled = false; }
+    if (gizmoHelper) gizmoHelper.visible = false;
+    gizmoMode = null; gizmoNode = null; dragStartData = null; multiStart = null;
+    setGizmoButtonStates();
+  }
+  function unionBounds(nodes) {
+    const mn = [Infinity, Infinity, Infinity], mx = [-Infinity, -Infinity, -Infinity];
+    nodes.forEach(n => {
+      const b = readBoxData(n);
+      [b.minX, b.minY, b.minZ].forEach((v, i) => { mn[i] = Math.min(mn[i], v); });
+      [b.maxX, b.maxY, b.maxZ].forEach((v, i) => { mx[i] = Math.max(mx[i], v); });
+    });
+    return { mn, mx };
+  }
+
+  // Puts the gizmo on the current selection. One box: the gizmo sits on that
+  // box (scale via its proxy, see below). Several boxes: it sits at the middle
+  // of the selection's bounds and drags a stand-in object while every selected
+  // box follows live — see liveUpdateMulti() / commitMultiGizmo().
+  function placeGizmo() {
+    if (!gizmo || !gizmoMode) return;
+    const nodes = selectedList();
+    if (!nodes.length) { detachGizmo(); return; }
+    const groups = nodes.map(n => nodeToGroup.get(n));
+    if (groups.some(g => !g)) return; // meshes not built yet; rebuild() calls back here
+    gizmoNode = boxNodes[activeBoxIndex] && nodes.includes(boxNodes[activeBoxIndex]) ? boxNodes[activeBoxIndex] : nodes[0];
+    gizmo.setMode(gizmoMode);
+    if (nodes.length === 1) {
+      const obj = groups[0];
+      if (gizmoMode === 'scale') {
+        // TransformControls always scales symmetrically around whatever
+        // object it's attached to. The box's own pivot is its center (that's
+        // what puts the handles there), so scaling the box directly would
+        // always grow both sides at once. Attaching to this separate,
+        // invisible proxy at the same spot keeps the handles in the same
+        // place while letting the real box resize one-directionally
+        // underneath it — see the 'change' listener below for the live
+        // preview, and commitGizmo() for the final result.
+        if (!scaleProxy) { scaleProxy = new THREE.Object3D(); scene.add(scaleProxy); }
+        scaleProxy.position.copy(obj.position);
+        scaleProxy.scale.set(1, 1, 1);
+        scaleProxy.rotation.set(0, 0, 0);
+        gizmo.attach(scaleProxy);
+      } else {
+        gizmo.attach(obj);
+      }
+    } else {
+      const u = unionBounds(nodes);
+      const center = u.mn.map((v, i) => (v + u.mx[i]) / 2);
+      if (gizmoMode === 'scale') {
+        if (!scaleProxy) { scaleProxy = new THREE.Object3D(); scene.add(scaleProxy); }
+        scaleProxy.position.set(center[0], center[1], center[2]);
+        scaleProxy.scale.set(1, 1, 1);
+        scaleProxy.rotation.set(0, 0, 0);
+        gizmo.attach(scaleProxy);
+      } else {
+        // Whole-number spot, so move snaps exactly and rotate has a whole-number pivot.
+        if (!multiProxy) { multiProxy = new THREE.Object3D(); scene.add(multiProxy); }
+        multiProxy.position.set(Math.round(center[0]), Math.round(center[1]), Math.round(center[2]));
+        multiProxy.quaternion.identity();
+        multiProxy.scale.set(1, 1, 1);
+        gizmo.attach(multiProxy);
+      }
+    }
+    gizmo.enabled = true;
+    if (gizmoHelper) gizmoHelper.visible = true;
+    setGizmoButtonStates();
+  }
+  function attachGizmo(mode) {
+    if (!selectedList().length) { setStatus('Open a box first'); vpToast('Select a box first'); return; }
+    gizmoMode = mode;
+    placeGizmo();
+  }
+  function toggleGizmoMode(mode) {
+    if (!initialized && !init()) return;
+    if (gizmoMode === mode) { detachGizmo(); return; }
+    attachGizmo(mode);
+  }
+  function captureDragStart() {
+    const nodes = selectedList();
+    if (nodes.length > 1 && gizmoMode) {
+      const u = unionBounds(nodes);
+      const center = u.mn.map((v, i) => (v + u.mx[i]) / 2);
+      const pivot = center.map(Math.round);
+      multiStart = {
+        mn: u.mn, mx: u.mx, pivot,
+        pivotV: new THREE.Vector3(pivot[0], pivot[1], pivot[2]),
+        items: nodes.map(n => {
+          const b = readBoxData(n);
+          return { node: n, mn: [b.minX, b.minY, b.minZ], mx: [b.maxX, b.maxY, b.maxZ], pos: nodeToGroup.get(n).position.clone() };
+        }),
+      };
+      dragStartData = { multi: true };
+      return;
+    }
+    multiStart = null;
+    if (!gizmoNode) return;
+    const b = readBoxData(gizmoNode);
+    dragStartData = { minX: b.minX, minY: b.minY, minZ: b.minZ, sizeX: b.maxX - b.minX, sizeY: b.maxY - b.minY, sizeZ: b.maxZ - b.minZ };
+  }
+
+  // Scale a box's bounds with the whole selection scaled from the selection's
+  // min corner (min and max each scaled and rounded separately, so boxes that
+  // touched before still touch). With a single box this is the same
+  // one-directional growth as the single-box path: min stays, size scales.
+  function scaledBounds(it, ms, f) {
+    const fs = [f.x, f.y, f.z], mn = [], sz = [];
+    for (let i = 0; i < 3; i++) {
+      const lo = Math.round(ms.mn[i] + (it.mn[i] - ms.mn[i]) * fs[i]);
+      let hi = Math.round(ms.mn[i] + (it.mx[i] - ms.mn[i]) * fs[i]);
+      if (hi <= lo) hi = lo + 1;
+      mn.push(lo); sz.push(hi - lo);
+    }
+    return { mn, sz };
+  }
+  // Live preview while a multi-box drag is in progress (nothing is committed yet).
+  function liveUpdateMulti() {
+    const ms = multiStart; if (!ms) return;
+    if (gizmoMode === 'translate' && multiProxy) {
+      const d = [0, 1, 2].map(i => Math.round(multiProxy.position.getComponent(i) - ms.pivot[i]));
+      ms.items.forEach(it => { const g = nodeToGroup.get(it.node); if (g) g.position.set(it.pos.x + d[0], it.pos.y + d[1], it.pos.z + d[2]); });
+    } else if (gizmoMode === 'rotate' && multiProxy) {
+      const q = multiProxy.quaternion;
+      ms.items.forEach(it => {
+        const g = nodeToGroup.get(it.node); if (!g) return;
+        g.quaternion.copy(q);
+        g.position.copy(it.pos).sub(ms.pivotV).applyQuaternion(q).add(ms.pivotV);
+      });
+    } else if (gizmoMode === 'scale' && scaleProxy) {
+      ms.items.forEach(it => {
+        const g = nodeToGroup.get(it.node); if (!g) return;
+        const r = scaledBounds(it, ms, scaleProxy.scale);
+        clearGroupChildren(g);
+        addBoxMeshChildren(g, r.sz[0], r.sz[1], r.sz[2], it.node._corners || emptyCorners(), it.node._flips || {}, it.node);
+        g.position.set(r.mn[0] + r.sz[0] / 2, r.mn[1] + r.sz[1] / 2, r.mn[2] + r.sz[2] / 2);
+      });
+    }
+  }
+  // Writes a finished multi-box drag back into the box data (whole units only).
+  function commitMultiGizmo() {
+    const ms = multiStart; multiStart = null;
+    const setBox = (node, mn, sz) => {
+      ['X', 'Y', 'Z'].forEach((a, i) => {
+        node.querySelector('.min' + a).value = mn[i];
+        if (sz) node.querySelector('.size' + a).value = sz[i];
+      });
+    };
+    if (gizmoMode === 'translate' && multiProxy) {
+      const d = [0, 1, 2].map(i => Math.round(multiProxy.position.getComponent(i) - ms.pivot[i]));
+      if (d.some(v => v !== 0)) ms.items.forEach(it => setBox(it.node, it.mn.map((v, i) => v + d[i]), null));
+      render();
+    } else if (gizmoMode === 'scale' && scaleProxy) {
+      ms.items.forEach(it => { const r = scaledBounds(it, ms, scaleProxy.scale); setBox(it.node, r.mn, r.sz); });
+      render();
+    } else if (gizmoMode === 'rotate' && multiProxy) {
+      const e = new THREE.Matrix4().makeRotationFromQuaternion(multiProxy.quaternion).elements;
+      const R = [[0, 0, 0], [0, 0, 0], [0, 0, 0]];
+      let clean = true, identity = true;
+      for (let r = 0; r < 3; r++) for (let c = 0; c < 3; c++) {
+        const raw = e[c * 4 + r], v = Math.round(raw) || 0;
+        if (Math.abs(raw - v) > 0.01) clean = false;
+        R[r][c] = v;
+        if (v !== (r === c ? 1 : 0)) identity = false;
+      }
+      if (clean && !identity) {
+        ms.items.forEach(it => applyRotationToNode(it.node, R, ms.pivot));
+        const prim = boxNodes[activeBoxIndex];
+        if (prim) openBox(prim, true); // refresh the Controls panel for the primary box
+        rebuildGroups();
+      }
+      render();
+    } else render();
+  }
+
+  // Live, uncommitted preview while a scale drag is in progress: rebuilds
+  // just this one box's geometry at the in-progress size and repositions it
+  // so the ORIGINAL min corner stays put — the one-directional growth the
+  // final commit produces, shown live instead of only appearing on release.
+  function liveUpdateScalePreview() {
+    if (!dragStartData || !gizmoNode || !scaleProxy) return;
+    const obj = nodeToGroup.get(gizmoNode);
+    if (!obj) return;
+    const start = dragStartData;
+    // Rounded live, not just at commit — this is what makes it visibly
+    // snap in whole-unit steps while dragging, the same feel translate has.
+    const sizeX = Math.max(1, Math.round(start.sizeX * scaleProxy.scale.x));
+    const sizeY = Math.max(1, Math.round(start.sizeY * scaleProxy.scale.y));
+    const sizeZ = Math.max(1, Math.round(start.sizeZ * scaleProxy.scale.z));
+    clearGroupChildren(obj);
+    const corners = gizmoNode._corners || Array.from({ length: 8 }, () => [0, 0, 0]);
+    const flips = gizmoNode._flips || {};
+    addBoxMeshChildren(obj, sizeX, sizeY, sizeZ, corners, flips, gizmoNode);
+    obj.position.set(start.minX + sizeX / 2, start.minY + sizeY / 2, start.minZ + sizeZ / 2);
+  }
+
+  // Converts the gizmo's final drag state into whole-unit box data and
+  // writes it back — this is the one place a drag actually changes SNBT
+  // data, everything up to this point was purely visual. Translate/scale
+  // work from a DELTA relative to where the drag started rather than the
+  // gizmo's absolute position, because the gizmo sits at the box's center
+  // (for a sane pivot) and a center is only a whole number for even-sized
+  // boxes — an odd-sized box's center is X.5, so snapping the delta (always
+  // whole, since it starts from an already-whole min/size) is what actually
+  // guarantees a whole-number result, not snapping the center itself.
+  function commitGizmo() {
+    if (!gizmoNode || !gizmoMode || !dragStartData) { dragStartData = null; return; }
+    const obj = nodeToGroup.get(gizmoNode);
+    if (!obj) { gizmoNode = null; dragStartData = null; return; }
+    if (multiStart) { commitMultiGizmo(); dragStartData = null; return; }
+    activeBoxIndex = boxNodes.indexOf(gizmoNode); // keep rotate/mirror helpers targeting the dragged box
+    const start = dragStartData;
+    const startCenter = {
+      x: start.minX + start.sizeX / 2, y: start.minY + start.sizeY / 2, z: start.minZ + start.sizeZ / 2,
+    };
+
+    if (gizmoMode === 'translate') {
+      const dx = Math.round(obj.position.x - startCenter.x);
+      const dy = Math.round(obj.position.y - startCenter.y);
+      const dz = Math.round(obj.position.z - startCenter.z);
+      gizmoNode.querySelector('.minX').value = start.minX + dx;
+      gizmoNode.querySelector('.minY').value = start.minY + dy;
+      gizmoNode.querySelector('.minZ').value = start.minZ + dz;
+      render();
+    } else if (gizmoMode === 'scale') {
+      // One-directional growth: the min corner stays exactly where it was,
+      // only size changes. scaleProxy (not the box itself) is what actually
+      // got scaled — see attachGizmo — and liveUpdateScalePreview() already
+      // showed this same one-directional result live during the drag, so
+      // there's no jump on release this time.
+      const factor = scaleProxy ? scaleProxy.scale : obj.scale;
+      const newSizeX = Math.max(1, Math.round(start.sizeX * factor.x));
+      const newSizeY = Math.max(1, Math.round(start.sizeY * factor.y));
+      const newSizeZ = Math.max(1, Math.round(start.sizeZ * factor.z));
+      gizmoNode.querySelector('.minX').value = start.minX;
+      gizmoNode.querySelector('.minY').value = start.minY;
+      gizmoNode.querySelector('.minZ').value = start.minZ;
+      gizmoNode.querySelector('.sizeX').value = newSizeX;
+      gizmoNode.querySelector('.sizeY').value = newSizeY;
+      gizmoNode.querySelector('.sizeZ').value = newSizeZ;
+      render();
+    } else if (gizmoMode === 'rotate') {
+      // Turn the gizmo's final orientation into a whole-number rotation
+      // matrix. TransformControls snaps each drag to 90° steps around one
+      // axis (X, Y or Z), so a clean result has only -1/0/1 entries. Going
+      // through the quaternion/matrix (not obj.rotation's Euler angles) keeps
+      // 180° turns and X/Z turns from being misread. Anything that isn't
+      // clean is discarded and the mesh is reset instead.
+      const e = new THREE.Matrix4().makeRotationFromQuaternion(obj.quaternion).elements;
+      const R = [[0, 0, 0], [0, 0, 0], [0, 0, 0]];
+      let clean = true, identity = true;
+      for (let r = 0; r < 3; r++) {
+        for (let c = 0; c < 3; c++) {
+          const raw = e[c * 4 + r], v = Math.round(raw) || 0; // || 0 turns -0 into 0
+          if (Math.abs(raw - v) > 0.01) clean = false;
+          R[r][c] = v;
+          if (v !== (r === c ? 1 : 0)) identity = false;
+        }
+      }
+      if (clean && !identity) rotateActiveBoxByMatrix(R); // renders via finishShapeEdit
+      else render(); // no change, or not a clean 90° turn: reset the mesh
+    }
+    dragStartData = null;
+    // render() rebuilds every mesh from the canonical (now-updated) box data
+    // at an identity transform, and rebuild() re-attaches the gizmo to the
+    // fresh mesh — so position/scale/rotation reset to match exactly what
+    // got committed, with no drift across repeated drags.
   }
 
   function init() {
@@ -1093,18 +1999,129 @@ const Preview = (() => {
     camera = new THREE.PerspectiveCamera(45, w / h, 0.001, 100000);
     camera.position.set(24, 22, 30);
 
-    // Logarithmic depth buffer, since near/far now track the live camera
-    // distance across a wide range (see animate()) instead of one fixed pair.
     renderer = new THREE.WebGLRenderer({ antialias: true, logarithmicDepthBuffer: true });
     renderer.setPixelRatio(window.devicePixelRatio || 1);
     renderer.setSize(w, h);
     container.innerHTML = '';
     container.appendChild(renderer.domElement);
 
+    // Stop the browser's middle-click autoscroll (the little scroll circle).
+    // Listening on the whole viewport box in the capture phase — not just the
+    // canvas — also covers middle-clicks that land on the toolbars, toast or
+    // selection rectangle sitting on top of the canvas, which used to let it through.
+    const viewportBox = container.parentElement || container;
+    viewportBox.addEventListener('mousedown', (e) => { if (e.button === 1) e.preventDefault(); }, true);
+    viewportBox.addEventListener('auxclick', (e) => { if (e.button === 1) e.preventDefault(); }, true);
+
     controls = new THREE.OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
     controls.dampingFactor = 0.08;
-    controls.mouseButtons = { LEFT: THREE.MOUSE.ROTATE, MIDDLE: THREE.MOUSE.PAN };
+    // Middle-drag orbits; OrbitControls itself turns that into a pan while Shift
+    // is held. (Don't switch this mapping from a mousedown listener: OrbitControls
+    // reads it on pointerdown, which fires first, so every click would use the
+    // PREVIOUS click's mapping.) LEFT and RIGHT intentionally left unbound.
+    controls.mouseButtons = { MIDDLE: THREE.MOUSE.ROTATE };
+
+    // Left button: click selects the box under the pointer (empty space
+    // deselects), Shift/Ctrl-click adds or removes a box, and dragging draws a
+    // selection box that picks every box it touches. None of it starts on a
+    // gizmo handle — TransformControls listens on the same element and runs
+    // first, so by now it has already marked a handle press as dragging/hovered.
+    const raycaster = new THREE.Raycaster();
+    const marqueeEl = document.getElementById('vpMarquee');
+    const hideMarquee = () => { if (marqueeEl) marqueeEl.style.display = 'none'; };
+    let drag = null;
+    renderer.domElement.addEventListener('pointerdown', (e) => {
+      if (e.button !== 0) { drag = null; return; }
+      const onGizmo = !!(gizmo && (gizmo.dragging || gizmo.axis));
+      drag = { x: e.clientX, y: e.clientY, onGizmo, moved: false, additive: e.shiftKey || e.ctrlKey || e.metaKey };
+      if (!onGizmo) { try { renderer.domElement.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ } }
+    });
+    renderer.domElement.addEventListener('pointermove', (e) => {
+      if (!drag || drag.onGizmo || isDraggingGizmo) return;
+      if (!drag.moved && Math.hypot(e.clientX - drag.x, e.clientY - drag.y) > 4) drag.moved = true;
+      if (!drag.moved || !marqueeEl) return;
+      const host = marqueeEl.parentElement.getBoundingClientRect();
+      marqueeEl.style.display = 'block';
+      marqueeEl.style.left = (Math.min(drag.x, e.clientX) - host.left) + 'px';
+      marqueeEl.style.top = (Math.min(drag.y, e.clientY) - host.top) + 'px';
+      marqueeEl.style.width = Math.abs(e.clientX - drag.x) + 'px';
+      marqueeEl.style.height = Math.abs(e.clientY - drag.y) + 'px';
+    });
+    renderer.domElement.addEventListener('pointercancel', () => { drag = null; hideMarquee(); });
+    renderer.domElement.addEventListener('pointerup', (e) => {
+      const d = drag; drag = null; hideMarquee();
+      if (!d || e.button !== 0 || d.onGizmo || isDraggingGizmo) return;
+      const rect = renderer.domElement.getBoundingClientRect();
+      if (d.moved) { marqueeSelect(d, e.clientX, e.clientY, rect); return; }
+      raycaster.setFromCamera(new THREE.Vector2(((e.clientX - rect.left) / rect.width) * 2 - 1, -((e.clientY - rect.top) / rect.height) * 2 + 1), camera);
+      const targets = [];
+      meshGroup.traverse(o => { if (o.userData.pick) targets.push(o); });
+      const hit = raycaster.intersectObjects(targets, false)[0];
+      const node = hit && hit.object.parent && hit.object.parent.userData.node;
+      viewportClickSelect(node && boxNodes.includes(node) ? node : null, d.additive);
+    });
+    // Selection box: every box whose projected bounds overlap the dragged rectangle.
+    function marqueeSelect(d, x, y, rect) {
+      const x0 = Math.min(d.x, x), x1 = Math.max(d.x, x), y0 = Math.min(d.y, y), y1 = Math.max(d.y, y);
+      const v = new THREE.Vector3();
+      const hits = boxNodes.filter(node => {
+        if (!nodeToGroup.get(node)) return false;
+        let lx = Infinity, hx = -Infinity, ly = Infinity, hy = -Infinity, any = false;
+        offsetCorners(readBoxData(node), node._corners).forEach(pt => {
+          v.set(pt[0], pt[1], pt[2]).project(camera);
+          if (v.z > 1) return; // behind the camera
+          const sx = rect.left + (v.x + 1) / 2 * rect.width, sy = rect.top + (1 - v.y) / 2 * rect.height;
+          lx = Math.min(lx, sx); hx = Math.max(hx, sx); ly = Math.min(ly, sy); hy = Math.max(hy, sy); any = true;
+        });
+        return any && hx >= x0 && lx <= x1 && hy >= y0 && ly <= y1;
+      });
+      if (d.additive) {
+        const cur = selectedList();
+        const merged = cur.concat(hits.filter(n => !cur.includes(n)));
+        if (merged.length) setSelection(merged, hits[hits.length - 1] || boxNodes[activeBoxIndex]);
+      } else if (hits.length) setSelection(hits, hits[hits.length - 1]);
+      else if (activeBoxIndex >= 0 || selectedNodes.size) deselectBox();
+    }
+
+    if (typeof THREE.TransformControls === 'function') {
+      gizmo = new THREE.TransformControls(camera, renderer.domElement);
+      // Live snapping while dragging, for better feel — the actual
+      // correctness guarantee comes from commitGizmo() rounding the DELTA
+      // from drag-start, not from this. That matters because the gizmo
+      // pivots on the box's CENTER, which is a half-unit for odd-sized
+      // boxes, so live-snapping the absolute position can nudge an
+      // untouched drag by up to half a unit — harmless, since the delta
+      // math at commit still lands on the correct whole-number result.
+      gizmo.setTranslationSnap(1);
+      // No setScaleSnap here — liveUpdateScalePreview() already rounds the
+      // resulting SIZE to whole units on every drag update, which is the
+      // snap that actually matters; snapping the proxy's raw multiplier
+      // underneath that wouldn't add anything and would just be one more
+      // opaque variable in the mix.
+      gizmo.setRotationSnap(Math.PI / 2); // 90° steps only — our format has no continuous rotation
+      // The screen-space free-rotate ring — confirmed a real, standalone
+      // property (not tied to showX/Y/Z, which stay at their default true
+      // so X/Y/Z all show normally in every mode).
+      gizmo.showE = false;
+      gizmo.showXYZE=false;
+      gizmo.enabled = false;
+      gizmo.addEventListener('dragging-changed', (event) => {
+        isDraggingGizmo = event.value;
+        controls.enabled = !event.value; // don't orbit while dragging a gizmo handle
+        if (event.value) captureDragStart(); else commitGizmo();
+      });
+      gizmo.addEventListener('change', () => {
+        if (!isDraggingGizmo) return;
+        if (multiStart) liveUpdateMulti();
+        else if (gizmoMode === 'scale') liveUpdateScalePreview();
+      });
+      // The controller itself is no longer an Object3D in the current API —
+      // getHelper() returns the actual visual object to add to the scene.
+      gizmoHelper = (typeof gizmo.getHelper === 'function') ? gizmo.getHelper() : gizmo;
+      gizmoHelper.visible = false;
+      scene.add(gizmoHelper);
+    }
 
     scene.add(new THREE.HemisphereLight(0xffffff, 0x1a1d2e, 1.1));
     const dirLight = new THREE.DirectionalLight(0xffffff, 0.6);
@@ -1117,9 +2134,6 @@ const Preview = (() => {
     meshGroup = new THREE.Group();
     scene.add(meshGroup);
 
-    // Watching the container itself (not just window 'resize') catches every
-    // reason its size can change: window resize, browser zoom, or the flex
-    // layout reflowing as sibling panels grow/shrink or wrap.
     if (window.ResizeObserver) {
       let scheduled = false;
       const ro = new ResizeObserver(() => {
@@ -1140,20 +2154,17 @@ const Preview = (() => {
     if (!container || !renderer || !camera) return;
     const w = container.clientWidth, h = container.clientHeight;
     if (!w || !h) return;
-    renderer.setPixelRatio(window.devicePixelRatio || 1); // browser zoom changes this after init
+    renderer.setPixelRatio(window.devicePixelRatio || 1);
     camera.aspect = w / h;
     camera.updateProjectionMatrix();
     renderer.setSize(w, h);
+    if (meshGroup) meshGroup.traverse(o => { if (o.material && o.material.isLineMaterial) o.material.resolution.set(w, h); });
   }
 
   function animate() {
     requestAnimationFrame(animate);
     if (controls) controls.update();
     if (camera && controls) {
-      // Near scales down and far scales up with the current view distance,
-      // so a close-up on a tiny corner-offset box and a zoomed-out view of
-      // a multi-block build are both clipped correctly — not just whatever
-      // distance was true the last time Reset View was clicked.
       const dist = Math.max(0.01, camera.position.distanceTo(controls.target));
       camera.near = Math.max(0.001, dist / 1000);
       camera.far = Math.max(dist * 200, 50);
@@ -1163,13 +2174,21 @@ const Preview = (() => {
   }
 
   function rebuild() {
+    if (isDraggingGizmo) return; // never rebuild mid-drag — would pull the mesh out from under the gizmo
     while (meshGroup.children.length) {
       const g = meshGroup.children[0];
       meshGroup.remove(g);
       g.children.forEach(child => { child.geometry.dispose(); child.material.dispose(); });
     }
-    boxNodes.forEach(node => meshGroup.add(buildBoxVisual(node)));
+    nodeToGroup = new Map();
+    boxNodes.forEach(node => {
+      const group = buildBoxVisual(node);
+      meshGroup.add(group);
+      nodeToGroup.set(node, group);
+    });
     rebuildFloorGrid();
+    // The gizmo belongs on whatever is selected right now.
+    if (gizmoMode) placeGizmo();
   }
 
   function fit() {
@@ -1196,10 +2215,38 @@ const Preview = (() => {
     controls.update();
   }
 
+  // Frames the selected boxes: orbit target moves to their center and the
+  // camera backs off just far enough to fit them, keeping the current viewing angle.
+  function focusSelection() {
+    if (!initialized && !init()) return;
+    const nodes = selectedList();
+    const box = new THREE.Box3();
+    nodes.forEach(node => {
+      offsetCorners(readBoxData(node), node._corners).forEach(p => box.expandByPoint(new THREE.Vector3(p[0], p[1], p[2])));
+    });
+    if (box.isEmpty()) return;
+    const center = box.getCenter(new THREE.Vector3());
+    const radius = Math.max(box.getSize(new THREE.Vector3()).length() / 2, 1);
+    const dir = camera.position.clone().sub(controls.target);
+    if (dir.lengthSq() < 1e-8) dir.set(1, 0.85, 1);
+    dir.normalize();
+    // Fit the bounding sphere in the narrower of the vertical/horizontal fields of view.
+    const vHalf = THREE.MathUtils.degToRad(camera.fov / 2);
+    const hHalf = Math.atan(Math.tan(vHalf) * camera.aspect);
+    const dist = (radius / Math.sin(Math.min(vHalf, hHalf))) * 1.15;
+    controls.target.copy(center);
+    camera.position.copy(center).addScaledVector(dir, dist);
+    camera.updateProjectionMatrix();
+    controls.update();
+  }
+
   return {
+    focusSelection() { focusSelection(); },
     update() { if (!initialized && !init()) return; rebuild(); },
     fit() { fit(); },
     setMode(mode) { viewMode = mode; if (!initialized && !init()) return; rebuild(); },
+    toggleGizmo(mode) { toggleGizmoMode(mode); },
+    syncSelection() { syncSelection(); },
   };
 })();
 
@@ -1259,6 +2306,63 @@ $$('.view-mode-btn').forEach(btn => {
   });
 });
 
+// Keep this in sync with the mouse-button setup in Preview.init() — only
+// controls that are actually bound belong here. Right click is
+// intentionally left unbound, so it's left out of this list too.
+const BOUND_CONTROLS = [
+  { label: 'Left-click', action: 'Select a box (empty space deselects)' },
+  { label: 'Shift / Ctrl + left-click', action: 'Add or remove a box from the selection' },
+  { label: 'Left-click drag', action: 'Drag a selection box around several boxes' },
+  { label: 'Middle-click drag', action: 'Orbit' },
+  { label: 'Shift + middle-click drag', action: 'Pan' },
+  { label: 'Scroll', action: 'Zoom' },
+  { label: 'G / S / R', action: 'Move / Scale / Rotate gizmo (press again to turn it off)' },
+  { label: 'F', action: 'Focus the camera on the selected boxes' },
+  { label: 'Ctrl + Z / Ctrl + Y', action: 'Undo / Redo' },
+  { label: 'Ctrl + C / Ctrl + V', action: 'Copy / Paste the selected boxes' },
+  { label: 'Delete', action: 'Delete the selected boxes' },
+];
+function openControlsModal() {
+  const table = $('#controlsModalTable');
+  table.innerHTML = BOUND_CONTROLS.map(c =>
+    `<tr><td style="padding:5px 14px 5px 0;color:var(--muted);white-space:nowrap">${c.label}</td><td>${c.action}</td></tr>`
+  ).join('');
+  $('#controlsModalBackdrop').style.display = 'flex';
+}
+function closeControlsModal() { $('#controlsModalBackdrop').style.display = 'none'; }
+$('#controlsModalBtn').addEventListener('click', openControlsModal);
+// Mirror / Copy / Paste live in the 3D viewport's top-right toolbar, beside undo/redo.
+function mirrorSelected(axis) {
+  if (!selectedList().length) { vpToast('Select a box first'); return; }
+  mirrorSelectedBoxes(axis);
+}
+$('#mirrorXBtn').addEventListener('click', () => mirrorSelected('x'));
+$('#mirrorYBtn').addEventListener('click', () => mirrorSelected('y'));
+$('#mirrorZBtn').addEventListener('click', () => mirrorSelected('z'));
+$('#copyShapeBtn').addEventListener('click', copySelected);
+$('#pasteShapeBtn').addEventListener('click', pasteBoxes);
+$('#vpDeleteBtn').addEventListener('click', deleteSelectedBoxes);
+function focusSelected() {
+  if (!selectedList().length) { vpToast('Select a box first'); return; }
+  Preview.focusSelection();
+}
+$('#vpFocusBtn').addEventListener('click', focusSelected);
+$('#controlsModalClose').addEventListener('click', closeControlsModal);
+$('#controlsModalBackdrop').addEventListener('click', e => { if (e.target.id === 'controlsModalBackdrop') closeControlsModal(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeControlsModal(); });
+
+// ---- 3D-viewport toolbars: shape presets (one click, no popover) + gizmo mode toggles ----
+$('#vpShapeBox').addEventListener('click', () => applyPresetShape('flatten'));
+$('#vpShapeNorth').addEventListener('click', () => applyPresetShape('north'));
+$('#vpShapeSouth').addEventListener('click', () => applyPresetShape('south'));
+$('#vpShapeEast').addEventListener('click', () => applyPresetShape('east'));
+$('#vpShapeWest').addEventListener('click', () => applyPresetShape('west'));
+$('#vpGizmoMove').addEventListener('click', () => Preview.toggleGizmo('translate'));
+$('#vpGizmoScale').addEventListener('click', () => Preview.toggleGizmo('scale'));
+$('#vpGizmoRotate').addEventListener('click', () => Preview.toggleGizmo('rotate'));
+$('#vpUndoBtn').addEventListener('click', undo);
+$('#vpRedoBtn').addEventListener('click', redo);
+
 document.addEventListener('DOMContentLoaded', () => {
   initCorners();
   const gridEl = $('#gridInput');
@@ -1294,6 +2398,48 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   faceMap.forEach(f => { const el = $('#' + f.id); if (el) el.addEventListener('input', () => { applyControlsToActiveBox(); }); });
+
+  // Undo / redo (viewport icon click handlers wired at top level)
+  updateUndoRedoButtons();
+  updateClipboardButtons();
+  document.addEventListener('keydown', (e) => {
+    const tag = document.activeElement && document.activeElement.tagName;
+    if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return; // let native field editing/undo/copy work
+    if ($('#controlsModalBackdrop').style.display === 'flex') return;       // hotkeys wait while the Controls dialog is open
+    const k = e.key.toLowerCase(), mod = e.ctrlKey || e.metaKey;
+    if (mod && !e.shiftKey && k === 'z') { e.preventDefault(); undo(); }
+    else if (mod && (k === 'y' || (e.shiftKey && k === 'z'))) { e.preventDefault(); redo(); }
+    else if (mod && !e.shiftKey && k === 'c') {
+      if (String(window.getSelection())) return; // the user highlighted page text: normal copy
+      e.preventDefault(); copySelected();
+    }
+    else if (mod && !e.shiftKey && k === 'v') { e.preventDefault(); if (!e.repeat) pasteBoxes(); }
+    else if (!mod && !e.altKey && !e.shiftKey && (e.key === 'Delete' || e.key === 'Backspace')) { e.preventDefault(); deleteSelectedBoxes(); }
+    else if (!mod && !e.altKey && !e.shiftKey && !e.repeat) {
+      // Same as clicking the toolbar button (press again to turn the gizmo off).
+      if (k === 'g') Preview.toggleGizmo('translate');
+      else if (k === 's') Preview.toggleGizmo('scale');
+      else if (k === 'r') Preview.toggleGizmo('rotate');
+      else if (k === 'f') focusSelected();
+    }
+  });
+
+  // Session restore banner
+  const savedSession = loadSavedSession();
+  if (savedSession) {
+    $('#sessionBanner').style.display = 'flex';
+    $('#sessionRestoreBtn').addEventListener('click', () => {
+      restoreState(savedSession);
+      pushHistoryNow(); // seed undo history with the restored state as the new baseline
+      $('#sessionBanner').style.display = 'none';
+      setStatus('Session restored');
+    });
+    $('#sessionDismissBtn').addEventListener('click', () => {
+      clearSavedSession();
+      $('#sessionBanner').style.display = 'none';
+    });
+  }
+
   render();
   Preview.fit();
 });

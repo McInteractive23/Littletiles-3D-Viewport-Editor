@@ -9,7 +9,6 @@
       --bg:#0f1220; --panel:#171a2b; --muted:#9aa3b2; --text:#e9edf7;
       --active:#2b3050; --border:#242a48; --field-bg:#0e1120; --field-border:#2a3156;
       --accent:#7d8cc4;
-      --scroll-thumb:#2a3156; --scroll-track:#0f1220;
     }
     *{box-sizing:border-box}
     body{margin:0;font:15px/1.6 system-ui,-apple-system,'Segoe UI',Roboto,Arial;background:var(--bg);color:var(--text)}
@@ -39,13 +38,8 @@
     th,td{text-align:left;padding:7px 10px;border-bottom:1px solid var(--border)}
     th{color:var(--muted);font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.03em}
     a{color:#9db4ff}
+    kbd{background:var(--field-bg);border:1px solid var(--field-border);border-bottom-width:2px;border-radius:5px;padding:0 6px;font:12px ui-monospace,Menlo,monospace;white-space:nowrap}
     footer{max-width:900px;margin:0 auto;padding:20px 18px 60px;color:var(--muted);font-size:13px;border-top:1px solid var(--border)}
-    --scroll-thumb:#2a3156; --scroll-track:#0f1220;
-::-webkit-scrollbar{width:10px;height:10px}
-    ::-webkit-scrollbar-track{background:var(--scroll-track);border-radius:5px}
-    ::-webkit-scrollbar-thumb{background:var(--scroll-thumb);border-radius:5px;border:2px solid var(--scroll-track)}
-    ::-webkit-scrollbar-thumb:hover{background:#3c4670}
-    *{scrollbar-width:thin;scrollbar-color:var(--scroll-thumb) var(--scroll-track)}
   </style>
 </head>
 <body>
@@ -56,10 +50,7 @@
       <h1>LittleTiles Selection Converter — Guide</h1>
       <div class="muted">What the tool does, how the format works, and how to use each panel.</div>
     </div>
-    <div class="row-inline" style="display:flex;gap:8px">
-      <a href="index.html" class="btn">⬅ Open the Tool</a>
-      <a href="https://github.com/McInteractive23/Littletiles-3D-Viewport-Editor" target="_blank" rel="noopener" class="btn">📝 GitHub</a>
-    </div>
+    <a href="index.html" class="btn">⬅ Open the Tool</a>
   </div>
 </header>
 
@@ -72,6 +63,7 @@
     <a href="#grid">Grid, explained</a>
     <a href="#interface">Interface walkthrough</a>
     <a href="#3d-preview">3D preview</a>
+    <a href="#hotkeys">Hotkeys</a>
     <a href="#workflows">Common workflows</a>
     <a href="#gotchas">Gotchas &amp; FAQ</a>
   </nav>
@@ -87,9 +79,10 @@
         (Minecraft's string form of NBT data): one long string with an integer array per box.
       </p>
       <p>
-        This tool is a workbench for that string. Paste a selection in, edit boxes one at a time or as a group
-        (by texture or by color), tweak corner offsets and face flips, watch a live 3D preview of the result,
-        and export the edited selection back to SNBT to paste into the game.
+        This tool is a workbench for that string. Paste a selection in, then edit it two ways: directly in the
+        3D preview (click boxes to select them, then move, resize, rotate, mirror, copy or delete them), or
+        through the number fields in the side panels. You can also recolor or retexture boxes as a group, tweak
+        corner offsets and face flips, and export the edited selection back to SNBT to paste into the game.
       </p>
       <p class="note">This is an independent fan tool, not part of LittleTiles itself. It reads and writes the
         same SNBT format the mod uses, reverse-engineered from real exported selections.</p>
@@ -100,10 +93,13 @@
       <ol>
         <li>Copy a selection in-game with LittleTiles, or grab the SNBT/JSON text some other way.</li>
         <li>Paste it into the <strong>Import Selection</strong> box (or use <strong>Choose File</strong>) and click <strong>Import</strong>.</li>
-        <li>Your boxes appear in the <strong>Boxes</strong> panel and in the <strong>3D Preview</strong>. Click a box to open it and edit its position, size, block ID, color, or alpha.</li>
+        <li>Your boxes appear in the <strong>3D Preview</strong> and as cards in the <strong>Boxes</strong> panel. Click a box in the preview to select it (it gets an orange outline and its card opens), or open its card to edit the position, size, block ID, color, or alpha as numbers.</li>
+        <li>Press <kbd>G</kbd>, <kbd>S</kbd> or <kbd>R</kbd> to bring up the Move, Scale or Rotate gizmo, and drag its handles. Drag a rectangle over several boxes to work on them together.</li>
         <li>Use <strong>Groups</strong> to recolor or retexture several boxes at once.</li>
         <li>When you're happy with the result, copy or download the text from <strong>Final SNBT Output</strong> and paste it back into the game.</li>
       </ol>
+      <p class="note">Your work is saved in this browser automatically, so closing the tab doesn't lose it.
+        See <a href="#gotchas">Gotchas &amp; FAQ</a>.</p>
     </section>
 
     <section id="the-format">
@@ -159,24 +155,36 @@
     <section id="interface">
       <h2>Interface walkthrough</h2>
 
+      <h3>Header</h3>
+      <p><strong>🎮 Controls</strong> opens a list of the 3D preview's mouse controls and hotkeys.
+        <strong>📖 Guide</strong> is this page, and <strong>📝 GitHub</strong> links to the project.</p>
+
       <h3>Controls</h3>
       <p>Grid dropdown, six checkboxes for globally flipping a face, a set of X/Y/Z fields for the 8 corner
-        offsets, and the Import Selection box. Whatever you set here in Flipped Faces / Corner Offsets applies
-        to whichever box is currently open in the Boxes panel.</p>
+        offsets, and the Import Selection box. Whatever you set in Flipped Faces / Corner Offsets applies
+        to the box that is currently open in the Boxes panel. If several boxes are selected, that is the primary
+        one (see <a href="#3d-preview">Selecting boxes</a>).</p>
 
       <h3>Groups</h3>
       <p>Boxes are grouped automatically — by texture (block ID) and separately by color. Edit a group's block
-        ID or color/alpha once and it applies to every box in that group; the dropdown next to each group jumps
-        you to a specific box within it.</p>
+        ID or color/alpha once and it applies to every box in that group. The list next to each group shows its
+        boxes; click one to open it. <strong>Apply Shape</strong> copies the current Corner Offsets and Flipped
+        Faces from the Controls panel onto every box in the group.</p>
 
       <h3>Boxes</h3>
       <p>One card per box: min position, size, block ID, color, alpha. Click a card's header to expand it. Add
-        Box creates a fresh empty one; Open All / Close All are for scanning through a large selection quickly.</p>
+        Box creates a fresh empty one; Open All / Close All are for scanning through a large selection quickly.
+        The card for each selected box is highlighted. Moving, resizing, copying and deleting boxes is done in
+        the 3D preview rather than on the cards — see <a href="#3d-preview">3D preview</a>.</p>
 
       <h3>Final SNBT Output &amp; Result</h3>
       <p>Final SNBT Output is the live-rebuilt string, ready to copy or download. Result shows the currently
         open box's raw indicator/corner data decoded — mostly useful if something looks wrong and you want to
         see the numbers behind it.</p>
+
+      <h3>Saved session banner</h3>
+      <p>If you come back to the tool and a previous session was saved in this browser, a banner at the top
+        offers <strong>Restore</strong> or <strong>Discard</strong>.</p>
     </section>
 
     <section id="3d-preview">
@@ -186,19 +194,65 @@
         way LittleTiles' transformable corners do — pull a top corner down to its base height and that side
         collapses into a slope automatically, no separate "ramp" shape needed.
       </p>
+
+      <h3>Mouse controls</h3>
       <table>
         <tr><th>Control</th><th>Action</th></tr>
-        <tr><td>Left-click drag</td><td>Orbit</td></tr>
-        <tr><td>Middle-click drag</td><td>Pan</td></tr>
+        <tr><td>Left-click a box</td><td>Select it (and open its card). Clicking empty space deselects.</td></tr>
+        <tr><td>Shift or Ctrl + left-click</td><td>Add the box to the selection, or take it out again</td></tr>
+        <tr><td>Left-click drag</td><td>Draw a selection rectangle; every box it touches is selected. Hold Shift or Ctrl to add to the current selection.</td></tr>
+        <tr><td>Middle-click drag</td><td>Orbit</td></tr>
+        <tr><td>Shift + middle-click drag</td><td>Pan</td></tr>
         <tr><td>Scroll</td><td>Zoom</td></tr>
         <tr><td>Right-click</td><td>Unbound</td></tr>
         <tr><td>Reset View</td><td>Refit the camera to everything currently in the scene</td></tr>
       </table>
+      <p>Dragging a gizmo handle moves the gizmo and never starts a selection rectangle.</p>
+
+      <h3>Selecting boxes</h3>
+      <p>
+        Selected boxes get an orange outline that follows their real shape, so slopes and wedges are outlined
+        correctly. A fainter copy of the outline shows through any box in front. One selected box is the
+        <em>primary</em> one and its card is the one open in the Boxes panel: the box you clicked last, or the
+        highest-numbered box when you select with a rectangle. Everything in
+        the toolbars below works on the whole selection, except the Controls panel, which edits the primary
+        box only.
+      </p>
+
+      <h3>Transform gizmos (left toolbar)</h3>
+      <p>Click a button, or press its key, to put a gizmo on the selection. Click or press again to turn it off.
+        The gizmo follows the selection as it changes, and turns off when nothing is selected.</p>
+      <table>
+        <tr><th>Gizmo</th><th>Key</th><th>What it does</th></tr>
+        <tr><td>Move</td><td><kbd>G</kbd></td><td>Drag an arrow to move along an axis. Positions snap to whole units. A multi-box selection moves together.</td></tr>
+        <tr><td>Scale</td><td><kbd>S</kbd></td><td>Drag a handle to resize. The box keeps its min corner and grows or shrinks from there, in whole units (never smaller than 1). For several boxes, the whole selection is scaled from its min corner, so boxes that touched still touch.</td></tr>
+        <tr><td>Rotate</td><td><kbd>R</kbd></td><td>Drag a ring to turn in 90° steps around X, Y or Z. A single box turns around its own center; its corner offsets and flipped faces turn with it. Several boxes turn as one group around a whole-number point near the middle of the selection.</td></tr>
+      </table>
+
+      <h3>Shape presets (second left toolbar)</h3>
+      <p>
+        One-click shapes for every selected box. <strong>Flatten</strong> clears the corner offsets so the box is
+        a plain cuboid again (flipped faces are kept). <strong>Slope North / East / South / West</strong> pulls the
+        two top corners on that side down by the box's full height, so the top face becomes a ramp that
+        descends toward that side.
+      </p>
+
+      <h3>Top-right toolbar</h3>
+      <table>
+        <tr><th>Button</th><th>Key</th><th>What it does</th></tr>
+        <tr><td>Focus</td><td><kbd>F</kbd></td><td>Centers the camera on the selected boxes and zooms to fit them, keeping your viewing angle.</td></tr>
+        <tr><td>Undo / Redo</td><td><kbd>Ctrl</kbd>+<kbd>Z</kbd> / <kbd>Ctrl</kbd>+<kbd>Y</kbd></td><td>Step back or forward through your edits.</td></tr>
+        <tr><td>Mirror X / Y / Z</td><td>—</td><td>Mirrors each selected box's shape (corner offsets and flipped faces) across that axis: X swaps East and West, Y swaps Up and Down, Z swaps North and South. It reshapes the box in place and doesn't move it.</td></tr>
+        <tr><td>Copy / Paste</td><td><kbd>Ctrl</kbd>+<kbd>C</kbd> / <kbd>Ctrl</kbd>+<kbd>V</kbd></td><td>Copies the selected boxes (size, block ID, color, shape). Paste adds copies in exactly the same position and selects them, ready to move. Paste stays greyed out until you've copied something.</td></tr>
+        <tr><td>Delete</td><td><kbd>Delete</kbd> or <kbd>Backspace</kbd></td><td>Deletes the selected boxes.</td></tr>
+      </table>
+
+      <h3>View modes</h3>
       <p>Three view modes, top-right of the panel:</p>
       <ul>
         <li><strong>Solid</strong> — filled faces only.</li>
         <li><strong>Solid+Wire</strong> — filled faces with edge lines on top, including the diagonal through each face.</li>
-        <li><strong>Wireframe</strong> — edges only, no fill.</li>
+        <li><strong>Wireframe</strong> — edges only, no fill. Boxes can still be clicked and selected.</li>
       </ul>
       <p class="note">
         Flipping a face reverses that face's stored triangle winding — the data that actually gets exported and
@@ -207,12 +261,38 @@
       </p>
     </section>
 
+    <section id="hotkeys">
+      <h2>Hotkeys</h2>
+      <p>The same list is available in the tool under <strong>🎮 Controls</strong>.</p>
+      <table>
+        <tr><th>Key</th><th>Action</th></tr>
+        <tr><td><kbd>G</kbd></td><td>Move gizmo</td></tr>
+        <tr><td><kbd>S</kbd></td><td>Scale gizmo</td></tr>
+        <tr><td><kbd>R</kbd></td><td>Rotate gizmo</td></tr>
+        <tr><td><kbd>F</kbd></td><td>Focus the camera on the selected boxes</td></tr>
+        <tr><td><kbd>Ctrl</kbd>+<kbd>Z</kbd></td><td>Undo</td></tr>
+        <tr><td><kbd>Ctrl</kbd>+<kbd>Y</kbd> or <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Z</kbd></td><td>Redo</td></tr>
+        <tr><td><kbd>Ctrl</kbd>+<kbd>C</kbd></td><td>Copy the selected boxes</td></tr>
+        <tr><td><kbd>Ctrl</kbd>+<kbd>V</kbd></td><td>Paste them in place</td></tr>
+        <tr><td><kbd>Delete</kbd> / <kbd>Backspace</kbd></td><td>Delete the selected boxes</td></tr>
+      </table>
+      <p>On a Mac, <kbd>Cmd</kbd> works in place of <kbd>Ctrl</kbd>. Hotkeys are ignored while you're typing in a
+        text box or number field, and while the Controls dialog is open. If you've highlighted text on the page,
+        <kbd>Ctrl</kbd>+<kbd>C</kbd> copies that text as usual.</p>
+    </section>
+
     <section id="workflows">
       <h2>Common workflows</h2>
       <h3>Recolor everything using one texture</h3>
       <p>Find the texture in <strong>Groups → By texture</strong> and use its color picker + alpha field — every box sharing that block ID updates together.</p>
       <h3>Build a simple wedge</h3>
-      <p>Add a box, then in Corner Offsets pull two adjacent top corners down by the box's own height (e.g. −2 on a size-2 box) — the top face becomes the ramp and the wall on that side collapses to an edge automatically.</p>
+      <p>Select a box and click one of the <strong>Slope</strong> presets in the 3D preview. Or do it by hand: in Corner Offsets, pull two adjacent top corners down by the box's own height (e.g. −2 on a size-2 box) — the top face becomes the ramp and the wall on that side collapses to an edge automatically.</p>
+      <h3>Move or rotate several boxes together</h3>
+      <p>Drag a rectangle around them (or Shift-click each one), press <kbd>G</kbd> to move or <kbd>R</kbd> to rotate, and drag the gizmo. They keep their positions relative to each other.</p>
+      <h3>Duplicate part of a build</h3>
+      <p>Select the boxes, press <kbd>Ctrl</kbd>+<kbd>C</kbd> then <kbd>Ctrl</kbd>+<kbd>V</kbd>, and press <kbd>G</kbd> to drag the pasted copies where you want them. Paste always lands exactly on top of the originals.</p>
+      <h3>Make a mirrored copy</h3>
+      <p>Copy and paste the boxes, move the copies to the other side, then use <strong>Mirror X</strong> (or Y/Z) so each copy's slopes face the opposite way. Mirror reshapes each box but doesn't move it, so position the copies yourself.</p>
       <h3>Work at a finer grid</h3>
       <p>Pick a higher Grid value (or Custom… for anything past 1024) before you start placing boxes, so the floor reference in the 3D preview matches the resolution you're actually building at.</p>
     </section>
@@ -228,6 +308,22 @@
         3D preview and the <code>grid</code> field in the exported header — box coordinates are untouched.</p>
       <p><strong>Can I edit raw SNBT by hand and re-import?</strong> Yes — Import re-parses whatever's in the
         text box, including anything you've hand-edited, as long as the structure stays valid.</p>
+      <p><strong>I pasted a box and nothing seems to have happened.</strong> Paste puts the copy exactly on top of
+        the original, so it looks identical. The pasted copy is selected: press <kbd>G</kbd> and drag it away.</p>
+      <p><strong>I rotated a box and it looks the same.</strong> A box that's the same size in the two axes
+        you're turning around (a cube, for example) looks identical after a 90° turn. Its corner offsets and
+        flipped faces still turn with it.</p>
+      <p><strong>My box moved half a unit after rotating.</strong> Positions are whole numbers. If a box's two
+        swapped sizes differ by an odd number (say 3 and 2), it can't stay exactly centered, so it lands half a
+        unit toward the negative side on that axis.</p>
+      <p><strong>The gizmo disappeared.</strong> It turns off when you click empty space or otherwise end up with
+        nothing selected. Select a box and press <kbd>G</kbd>, <kbd>S</kbd> or <kbd>R</kbd> again.</p>
+      <p><strong>A hotkey does nothing.</strong> Hotkeys are ignored while the cursor is in a text or number
+        field, and while the Controls dialog is open. Click on the page background or the 3D preview first.</p>
+      <p><strong>I deleted boxes by accident.</strong> Press <kbd>Ctrl</kbd>+<kbd>Z</kbd>.</p>
+      <p><strong>Is my work saved if I close the tab?</strong> Yes, but only in this browser. The tool saves
+        your boxes a moment after each change. Next time you open it you'll see a banner with Restore and Discard.
+        Download the SNBT if you need a copy that isn't tied to this browser.</p>
     </section>
   </article>
 </main>
