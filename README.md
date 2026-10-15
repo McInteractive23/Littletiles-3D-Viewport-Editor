@@ -1,3 +1,4 @@
+A tool created by AI
 
 A browser-based editor for [LittleTiles](https://github.com/CreativeMD/LittleTiles) selections. Paste in
 exported SNBT, edit boxes individually or in groups, tweak corner offsets and face flips, preview the result
