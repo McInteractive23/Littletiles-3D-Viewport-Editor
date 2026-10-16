@@ -87,7 +87,7 @@
 <header>
   <div class="row" style="justify-content:space-between;align-items:flex-start">
     <div>
-      <h1>LittleTiles Selection Converter <span class="version-badge" id="appVersion" title="Version 1.1.1">v1.1.1</span></h1>
+      <h1>LittleTiles Selection Converter <span class="version-badge" id="appVersion" title="Version 1.1.2">v1.1.2</span></h1>
       <div class="muted">Import SNBT/selection, edit multiple boxes, group tiles by block ID or color, edit global flips &amp; corner offsets, preview the result in 3D, then export updated SNBT.</div>
     </div>
     <div class="row-inline" style="gap:8px">
@@ -1753,6 +1753,12 @@ const Preview = (() => {
     if (groups.some(g => !g)) return; // meshes not built yet; rebuild() calls back here
     gizmoNode = boxNodes[activeBoxIndex] && nodes.includes(boxNodes[activeBoxIndex]) ? boxNodes[activeBoxIndex] : nodes[0];
     gizmo.setMode(gizmoMode);
+    // Move snapping: with several boxes the gizmo drags a stand-in that sits on a
+    // whole-number spot, so TransformControls' own snap is exactly right. With a
+    // single box it would snap the box's CENTER to whole units, which is wrong for
+    // odd sizes (their center sits on a half unit); liveUpdateSingleMove() snaps
+    // the movement instead.
+    gizmo.setTranslationSnap(nodes.length > 1 ? 1 : null);
     if (nodes.length === 1) {
       const obj = groups[0];
       if (gizmoMode === 'scale') {
@@ -1840,6 +1846,45 @@ const Preview = (() => {
       mn.push(lo); sz.push(hi - lo);
     }
     return { mn, sz };
+  }
+  // Whole-number rotation matrix for a quaternion (null if it isn't a clean 90-degree turn).
+  function wholeRotationFromQuat(q) {
+    const e = new THREE.Matrix4().makeRotationFromQuaternion(q).elements;
+    const R = [[0, 0, 0], [0, 0, 0], [0, 0, 0]];
+    for (let r = 0; r < 3; r++) for (let c = 0; c < 3; c++) {
+      const raw = e[c * 4 + r], v = Math.round(raw) || 0;
+      if (Math.abs(raw - v) > 0.01) return null;
+      R[r][c] = v;
+    }
+    return R;
+  }
+  // Single box, Move: snap the movement itself to whole units, measured from where
+  // the drag started, so the box stays on the grid at every step of the drag
+  // (not just after release) whatever its size.
+  function liveUpdateSingleMove() {
+    const o = gizmo.object, st = dragStartData;
+    if (!o || !st || st.multi) return;
+    const c = [st.minX + st.sizeX / 2, st.minY + st.sizeY / 2, st.minZ + st.sizeZ / 2];
+    o.position.set(
+      c[0] + Math.round(o.position.x - c[0]),
+      c[1] + Math.round(o.position.y - c[1]),
+      c[2] + Math.round(o.position.z - c[2]));
+  }
+  // Single box, Rotate: the turn is shown around the box's center, but when the
+  // two swapped sizes differ by an odd number the committed box can't stay
+  // exactly centered (coordinates are whole numbers). Put the preview at that
+  // final center right away so there is no jump on release.
+  function liveUpdateSingleRotate() {
+    const o = gizmo.object, st = dragStartData;
+    if (!o || !st || st.multi) return;
+    const R = wholeRotationFromQuat(o.quaternion);
+    if (!R) return;
+    const mn = [st.minX, st.minY, st.minZ], sz = [st.sizeX, st.sizeY, st.sizeZ], pos = [];
+    for (let r = 0; r < 3; r++) {
+      const newSize = Math.abs(R[r][0]) * sz[0] + Math.abs(R[r][1]) * sz[1] + Math.abs(R[r][2]) * sz[2];
+      pos.push(mn[r] + Math.floor((sz[r] - newSize) / 2) + newSize / 2);
+    }
+    o.position.set(pos[0], pos[1], pos[2]);
   }
   // Live preview while a multi-box drag is in progress (nothing is committed yet).
   function liveUpdateMulti() {
@@ -2121,6 +2166,8 @@ const Preview = (() => {
         if (!isDraggingGizmo) return;
         if (multiStart) liveUpdateMulti();
         else if (gizmoMode === 'scale') liveUpdateScalePreview();
+        else if (gizmoMode === 'translate') liveUpdateSingleMove();
+        else if (gizmoMode === 'rotate') liveUpdateSingleRotate();
       });
       // The controller itself is no longer an Object3D in the current API —
       // getHelper() returns the actual visual object to add to the scene.
